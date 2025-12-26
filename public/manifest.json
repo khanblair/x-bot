@@ -1,0 +1,44 @@
+{
+  "name": "X-Bot - Twitter Feed Viewer",
+  "short_name": "X-Bot",
+  "description": "Fetch, cache, and share tweets with a beautiful interface",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#1DA1F2",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshot.png",
+      "sizes": "1280x720",
+      "type": "image/png"
+    }
+  ],
+  "categories": ["social", "news"],
+  "shortcuts": [
+    {
+      "name": "Feed",
+      "url": "/feed",
+      "description": "View tweet feed"
+    },
+    {
+      "name": "Search",
+      "url": "/search",
+      "description": "Search tweets"
+    }
+  ]
+}
