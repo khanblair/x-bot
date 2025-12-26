@@ -1,45 +1,75 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
-import { TweetCard } from '@/components/TweetCard';
+import { useQuery as useConvexQuery } from 'convex/react';
+import { api } from '@/convex/_generated/api';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { GlassCard } from '@/components/GlassCard';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { ComposeTweet } from '@/components/ComposeTweet';
 import { RateLimitIndicator } from '@/components/RateLimitIndicator';
-import { Tweet, TweetResponse } from '@/lib/types';
-import { Twitter, Home, Search as SearchIcon, RefreshCw, TrendingUp, PenSquare, X } from 'lucide-react';
+import { Twitter, Home, Search as SearchIcon, TrendingUp, PenSquare, X, CheckCircle2, XCircle, Clock } from 'lucide-react';
 import Link from 'next/link';
 
-async function fetchTweets(username: string, sortBy: string): Promise<TweetResponse> {
-  const response = await fetch(`/api/tweets?username=${username}&max=20&sortBy=${sortBy}`);
-  if (!response.ok) {
-    throw new Error('Failed to fetch tweets');
-  }
-  return response.json();
-}
-
 export default function FeedPage() {
-  const [username, setUsername] = useState('twitter');
-  const [inputValue, setInputValue] = useState('twitter');
+  const [searchFilter, setSearchFilter] = useState('');
   const [sortBy, setSortBy] = useState('latest');
   const [showCompose, setShowCompose] = useState(false);
 
-  const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ['tweets', username, sortBy],
-    queryFn: () => fetchTweets(username, sortBy),
-  });
+  // Fetch all posts from Convex
+  const allPosts = useConvexQuery(api.tweets.getTweets, { limit: 100 });
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setUsername(inputValue);
+  // Filter posts in real-time based on search
+  const filteredPosts = allPosts?.filter((tweet) => 
+    searchFilter.trim() === '' || 
+    tweet.text.toLowerCase().includes(searchFilter.toLowerCase())
+  ) || [];
+
+  const visiblePosts = filteredPosts
+    .slice()
+    .sort((a, b) => {
+      if (sortBy === 'likes') return (b.likes || 0) - (a.likes || 0);
+      if (sortBy === 'retweets') return (b.retweets || 0) - (a.retweets || 0);
+      if (sortBy === 'replies') return (b.replies || 0) - (a.replies || 0);
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchFilter(e.target.value);
   };
 
-  const tweets: Tweet[] = data?.data?.map((tweet) => ({
-    ...tweet,
-    author: data.includes?.users?.find((user) => user.id === tweet.author_id),
-  })) || [];
+  const isLoading = allPosts === undefined;
+
+  const getStatusBadge = (status?: string) => {
+    if (!status) return null;
+    
+    if (status === 'posted') {
+      return (
+        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-500/20 text-green-700 dark:text-green-300">
+          <CheckCircle2 className="w-3 h-3" />
+          Posted
+        </span>
+      );
+    }
+    
+    if (status === 'failed') {
+      return (
+        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-red-500/20 text-red-700 dark:text-red-300">
+          <XCircle className="w-3 h-3" />
+          Failed
+        </span>
+      );
+    }
+    
+    if (status === 'pending') {
+      return (
+        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-yellow-500/20 text-yellow-700 dark:text-yellow-300">
+          <Clock className="w-3 h-3" />
+          Pending
+        </span>
+      );
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-twitter-blue/10 via-purple-500/10 to-pink-500/10 dark:from-twitter-blue/5 dark:via-purple-500/5 dark:to-pink-500/5">
@@ -69,28 +99,35 @@ export default function FeedPage() {
         <div className="grid gap-6 mb-6 lg:grid-cols-3">
           <div className="lg:col-span-2">
             <GlassCard className="p-6">
-              <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-4">
                 <div>
-                  <label htmlFor="username" className="block text-sm font-medium mb-2">Twitter Username</label>
+                  <label htmlFor="search" className="block text-sm font-medium mb-2">Search Your Posts</label>
                   <div className="flex gap-2">
-                    <input
-                      id="username"
-                      type="text"
-                      value={inputValue}
-                      onChange={(e) => setInputValue(e.target.value)}
-                      placeholder="e.g., twitter, elonmusk"
-                      className="flex-1 px-4 py-3 rounded-full glass-card focus:outline-none focus:ring-2 focus:ring-twitter-blue"
-                    />
-                    <button type="submit" className="btn-primary">Load Feed</button>
-                    <button
-                      type="button"
-                      onClick={() => refetch()}
-                      className="btn-secondary p-3"
-                      aria-label="Refresh"
-                    >
-                      <RefreshCw className="w-5 h-5" />
-                    </button>
+                    <div className="flex-1 relative">
+                      <SearchIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted" />
+                      <input
+                        id="search"
+                        type="text"
+                        value={searchFilter}
+                        onChange={handleSearchChange}
+                        placeholder="Search through your posts..."
+                        className="w-full pl-12 pr-4 py-3 rounded-full glass-card focus:outline-none focus:ring-2 focus:ring-twitter-blue"
+                      />
+                    </div>
+                    {searchFilter && (
+                      <button
+                        type="button"
+                        onClick={() => setSearchFilter('')}
+                        className="btn-secondary p-3"
+                        aria-label="Clear search"
+                      >
+                        <X className="w-5 h-5" />
+                      </button>
+                    )}
                   </div>
+                  <p className="text-sm text-muted mt-2">
+                    {searchFilter ? `Filtering ${visiblePosts.length} of ${allPosts?.length || 0} posts` : `Showing all ${allPosts?.length || 0} posts`}
+                  </p>
                 </div>
 
                 <div>
@@ -104,6 +141,7 @@ export default function FeedPage() {
                     ].map((option) => (
                       <button
                         key={option.value}
+                        type="button"
                         onClick={() => setSortBy(option.value)}
                         className={`px-3 py-2 rounded-full text-sm font-medium transition-all ${
                           sortBy === option.value
@@ -116,7 +154,7 @@ export default function FeedPage() {
                     ))}
                   </div>
                 </div>
-              </form>
+              </div>
             </GlassCard>
           </div>
 
@@ -137,40 +175,70 @@ export default function FeedPage() {
 
         {isLoading && <LoadingSpinner />}
 
-        {error && (
-          <GlassCard className="p-6 text-center">
-            <p className="text-red-500">
-              {error instanceof Error ? error.message : 'Failed to load tweets'}
-            </p>
-            <button onClick={() => refetch()} className="btn-primary mt-4">Try Again</button>
-          </GlassCard>
-        )}
-
-        {!isLoading && !error && tweets.length > 0 && (
+        {!isLoading && visiblePosts.length > 0 && (
           <div className="space-y-4">
             <div className="flex items-center gap-2 px-2">
-              <h2 className="text-2xl font-bold">@{username}'s Timeline</h2>
+              <h2 className="text-2xl font-bold">
+                {searchFilter ? 'Search Results' : 'Your Posts'}
+              </h2>
               <TrendingUp className="w-5 h-5 text-twitter-blue" />
-              <span className="text-sm text-muted">({tweets.length})</span>
+              <span className="text-sm text-muted">({visiblePosts.length})</span>
             </div>
-            {tweets.map((tweet) => (
-              <TweetCard key={tweet.id} tweet={tweet} />
+            {visiblePosts.map((tweet) => (
+              <GlassCard key={tweet._id} className="p-4">
+                <div className="flex items-start gap-3">
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-twitter-blue to-purple-500 flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold">{tweet.authorName || 'You'}</span>
+                        <span className="text-muted text-sm">@{tweet.authorUsername || 'user'}</span>
+                        {getStatusBadge(tweet.status)}
+                      </div>
+                      <span className="text-xs text-muted">
+                        {new Date(tweet.createdAt).toLocaleString()}
+                      </span>
+                    </div>
+                    <p className="whitespace-pre-wrap break-words mb-3">{tweet.text}</p>
+                    {tweet.status === 'failed' && tweet.errorMessage && (
+                      <div className="mt-2 p-2 rounded bg-red-500/10 border border-red-500/20">
+                        <p className="text-xs text-red-600 dark:text-red-400">
+                          Error: {tweet.errorMessage}
+                        </p>
+                      </div>
+                    )}
+                    <div className="flex items-center gap-4 text-muted text-sm">
+                      <span>❤️ {tweet.likes || 0}</span>
+                      <span>🔄 {tweet.retweets || 0}</span>
+                      <span>💬 {tweet.replies || 0}</span>
+                    </div>
+                  </div>
+                </div>
+              </GlassCard>
             ))}
           </div>
         )}
 
-        {!isLoading && !error && tweets.length === 0 && (
+        {!isLoading && visiblePosts.length === 0 && allPosts && allPosts.length > 0 && (
           <GlassCard className="p-12 text-center">
-            <Twitter className="w-16 h-16 mx-auto text-muted mb-4" />
-            <h3 className="text-xl font-bold mb-2">No tweets found</h3>
-            <p className="text-muted">Try a different username</p>
+            <SearchIcon className="w-16 h-16 mx-auto text-muted mb-4" />
+            <h3 className="text-xl font-bold mb-2">No matching posts found</h3>
+            <p className="text-muted">Try a different search term</p>
+            <button 
+              onClick={() => setSearchFilter('')}
+              className="btn-primary mt-4"
+            >
+              Clear Search
+            </button>
           </GlassCard>
         )}
 
-        {data?.meta?.fallback && (
-          <div className="mt-4 p-3 rounded-lg bg-yellow-500/20 border border-yellow-500/30 text-yellow-700 dark:text-yellow-300">
-            <p className="text-sm">{data.meta.message}</p>
-          </div>
+        {!isLoading && (!allPosts || allPosts.length === 0) && (
+          <GlassCard className="p-12 text-center">
+            <Twitter className="w-16 h-16 mx-auto text-muted mb-4" />
+            <h3 className="text-xl font-bold mb-2">No posts yet</h3>
+            <p className="text-muted">Compose your first tweet to get started!</p>
+          </GlassCard>
         )}
       </main>
 

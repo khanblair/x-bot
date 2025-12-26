@@ -4,6 +4,9 @@ import { useState } from 'react';
 import { GlassCard } from './GlassCard';
 import { Send, Eye, X, Image as ImageIcon, Loader2 } from 'lucide-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation as useConvexMutation } from 'convex/react';
+import { api } from '@/convex/_generated/api';
+import toast from 'react-hot-toast';
 
 interface ComposeTweetProps {
   onClose?: () => void;
@@ -13,35 +16,108 @@ export function ComposeTweet({ onClose }: ComposeTweetProps) {
   const [text, setText] = useState('');
   const [showPreview, setShowPreview] = useState(false);
   const queryClient = useQueryClient();
+  const addTweetToConvex = useConvexMutation(api.tweets.addTweet);
+  const updateTweetStatus = useConvexMutation(api.tweets.updateTweetStatus);
 
   const postTweet = useMutation({
     mutationFn: async (tweetText: string) => {
-      const response = await fetch('/api/post-tweet', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: tweetText }),
-      });
-      
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to post tweet');
+      // Validation
+      if (!tweetText.trim()) {
+        throw new Error('Tweet cannot be empty');
       }
       
-      return response.json();
+      if (tweetText.length > 280) {
+        throw new Error('Tweet exceeds 280 character limit');
+      }
+
+      // Add to Convex first with pending status
+      const convexId = await addTweetToConvex({
+        text: tweetText,
+        status: 'pending',
+        source: 'compose',
+      });
+
+      // Post to Twitter
+      try {
+        const response = await fetch('/api/post-tweet', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: tweetText }),
+        });
+        
+        if (!response.ok) {
+          const error = await response.json();
+          
+          // Update Convex with failure
+          await updateTweetStatus({
+            id: convexId,
+            status: 'failed',
+            errorMessage: error.error || 'Failed to post tweet',
+            errorCode: response.status,
+          });
+          
+          throw new Error(error.error || 'Failed to post tweet');
+        }
+        
+        const data = await response.json();
+        
+        // Update Convex with success
+        await updateTweetStatus({
+          id: convexId,
+          status: 'posted',
+          tweetId: data.tweet?.id,
+        });
+        
+        return { ...data, convexId };
+      } catch (err: any) {
+        // Update Convex with failure
+        await updateTweetStatus({
+          id: convexId,
+          status: 'failed',
+          errorMessage: err.message,
+        });
+        throw err;
+      }
     },
     onSuccess: () => {
+      // Show success toast
+      toast.success('Tweet posted successfully!', {
+        icon: '🎉',
+        duration: 5000,
+      });
+      
       // Invalidate queries to refresh feed
       queryClient.invalidateQueries({ queryKey: ['tweets'] });
       setText('');
       setShowPreview(false);
       if (onClose) onClose();
     },
+    onError: (error: Error) => {
+      // Show error toast
+      toast.error(error.message || 'Failed to post tweet', {
+        icon: '❌',
+        duration: 6000,
+      });
+    },
   });
 
   const handleSubmit = () => {
-    if (text.trim() && text.length <= 280) {
-      postTweet.mutate(text);
+    // Validation with toasts
+    if (!text.trim()) {
+      toast.error('Please enter some text', {
+        icon: '⚠️',
+      });
+      return;
     }
+    
+    if (text.length > 280) {
+      toast.error(`Tweet is ${text.length - 280} characters too long`, {
+        icon: '⚠️',
+      });
+      return;
+    }
+    
+    postTweet.mutate(text);
   };
 
   const characterCount = text.length;
@@ -108,12 +184,6 @@ export function ComposeTweet({ onClose }: ComposeTweetProps) {
               Tweet is {characterCount - 280} characters over the limit
             </p>
           )}
-
-          {postTweet.error && (
-            <div className="mt-4 p-3 rounded-lg bg-red-500/20 border border-red-500/30 text-red-700 dark:text-red-300">
-              <p className="text-sm">{postTweet.error.message}</p>
-            </div>
-          )}
         </>
       ) : (
         <>
@@ -159,12 +229,6 @@ export function ComposeTweet({ onClose }: ComposeTweetProps) {
               )}
             </button>
           </div>
-
-          {postTweet.isSuccess && (
-            <div className="mt-4 p-3 rounded-lg bg-green-500/20 border border-green-500/30 text-green-700 dark:text-green-300">
-              <p className="text-sm">✓ Tweet posted successfully!</p>
-            </div>
-          )}
         </>
       )}
     </GlassCard>
