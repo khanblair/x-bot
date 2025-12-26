@@ -1,55 +1,13 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
-import { Twitter, Zap, Shield, Smartphone, PenSquare, X } from 'lucide-react';
+import { Zap, Shield, Smartphone, Twitter } from 'lucide-react';
 import { GlassCard } from '@/components/GlassCard';
-import { ThemeToggle } from '@/components/ThemeToggle';
-import { ComposeTweet } from '@/components/ComposeTweet';
+import { PageLayout } from '@/components/PageLayout';
 
 export default function Home() {
-  const [showCompose, setShowCompose] = useState(false);
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-twitter-blue/10 via-purple-500/10 to-pink-500/10 dark:from-twitter-blue/5 dark:via-purple-500/5 dark:to-pink-500/5">
-      {/* Header */}
-      <header className="fixed top-0 left-0 right-0 z-50 glass-card mx-4 mt-4 rounded-2xl">
-        <div className="container mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Twitter className="w-8 h-8 text-twitter-blue" />
-              <h1 className="text-2xl font-bold">X-Bot</h1>
-            </div>
-            <ThemeToggle />
-          </div>
-        </div>
-      </header>
-
-      {/* Floating Action Button */}
-      <button
-        onClick={() => setShowCompose(!showCompose)}
-        className="fixed bottom-8 right-8 z-50 w-16 h-16 rounded-full bg-twitter-blue hover:bg-twitter-blue/90 text-white shadow-2xl hover:scale-110 transition-all duration-200 flex items-center justify-center group"
-        aria-label="Compose Tweet"
-      >
-        {showCompose ? (
-          <X className="w-6 h-6" />
-        ) : (
-          <PenSquare className="w-6 h-6" />
-        )}
-        <span className="absolute right-full mr-4 px-3 py-2 bg-gray-900 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
-          {showCompose ? 'Close' : 'Compose Tweet'}
-        </span>
-      </button>
-
-      {/* Compose Modal */}
-      {showCompose && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-          <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <ComposeTweet onClose={() => setShowCompose(false)} />
-          </div>
-        </div>
-      )}
-
+    <PageLayout showNavigation={true} currentPage="home" showComposeFAB={true} showFooter={true}>
       {/* Hero Section */}
       <main className="container mx-auto px-6 pt-32 pb-20">
         <div className="flex flex-col items-center text-center space-y-8">
@@ -89,7 +47,7 @@ export default function Home() {
               </div>
               <h3 className="text-xl font-bold">Lightning Fast</h3>
               <p className="text-muted">
-                Optimized performance with React Query caching and Next.js 15
+                Optimized performance with React Query caching and Next.js 16
               </p>
             </GlassCard>
 
@@ -123,13 +81,8 @@ export default function Home() {
               </p>
             </GlassCard>
           </div>
-
-          {/* Footer */}
-          <footer className="mt-20 text-center text-muted">
-            <p>Built with Next.js 15, TypeScript, and Twitter API v2</p>
-          </footer>
         </div>
       </main>
-    </div>
+    </PageLayout>
   );
 }

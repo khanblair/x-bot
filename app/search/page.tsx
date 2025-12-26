@@ -5,11 +5,10 @@ import { useQuery as useConvexQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { GlassCard } from '@/components/GlassCard';
-import { ThemeToggle } from '@/components/ThemeToggle';
 import { ComposeTweet } from '@/components/ComposeTweet';
 import { RateLimitIndicator } from '@/components/RateLimitIndicator';
-import { Twitter, Home, Search as SearchIcon, TrendingUp, PenSquare, X, CheckCircle2, XCircle, Clock } from 'lucide-react';
-import Link from 'next/link';
+import { PageLayout } from '@/components/PageLayout';
+import { Twitter, Search as SearchIcon, TrendingUp, PenSquare, X, CheckCircle2, XCircle, Clock } from 'lucide-react';
 
 export default function SearchPage() {
   const [searchFilter, setSearchFilter] = useState('');
@@ -62,32 +61,10 @@ export default function SearchPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-twitter-blue/10 via-purple-500/10 to-pink-500/10 dark:from-twitter-blue/5 dark:via-purple-500/5 dark:to-pink-500/5">
-      <header className="sticky top-0 z-50 glass-card mx-4 mt-4 rounded-2xl">
-        <div className="container mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-                <Twitter className="w-8 h-8 text-twitter-blue" />
-                <h1 className="text-2xl font-bold hidden sm:block">X-Bot</h1>
-              </Link>
-              <nav className="flex items-center gap-2">
-                <Link href="/" className="p-2 rounded-full hover:bg-muted/20 transition-colors">
-                  <Home className="w-5 h-5" />
-                </Link>
-                <Link href="/feed" className="p-2 rounded-full hover:bg-muted/20 transition-colors">
-                  <Twitter className="w-5 h-5" />
-                </Link>
-              </nav>
-            </div>
-            <ThemeToggle />
-          </div>
-        </div>
-      </header>
-
-      <main className="container mx-auto px-4 py-8 max-w-2xl">
-        <div className="grid gap-6 mb-6 lg:grid-cols-3">
-          <div className="lg:col-span-2">
+    <PageLayout showNavigation={true} currentPage="search" showComposeFAB={true}>
+      <main className="container mx-auto px-4 pt-24 pb-8 max-w-7xl">
+        <div className="grid gap-6 mb-6 lg:grid-cols-12">
+          <div className="lg:col-span-8">
             <GlassCard className="p-6">
               <div className="space-y-4">
                 <div>
@@ -123,7 +100,7 @@ export default function SearchPage() {
             </GlassCard>
           </div>
 
-          <div className="lg:col-span-1">
+          <div className="lg:col-span-4">
             <RateLimitIndicator />
           </div>
         </div>
@@ -206,33 +183,6 @@ export default function SearchPage() {
           </GlassCard>
         )}
       </main>
-
-      {/* Floating Action Button */}
-      <button
-        onClick={() => setShowCompose(!showCompose)}
-        className="fixed bottom-8 right-8 z-50 w-16 h-16 rounded-full bg-twitter-blue hover:bg-twitter-blue/90 text-white shadow-2xl hover:scale-110 transition-all duration-200 flex items-center justify-center group"
-        aria-label="Compose Tweet"
-      >
-        {showCompose ? (
-          <X className="w-6 h-6" />
-        ) : (
-          <PenSquare className="w-6 h-6" />
-        )}
-        <span className="absolute right-full mr-4 px-3 py-2 bg-gray-900 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
-          {showCompose ? 'Close' : 'Compose Tweet'}
-        </span>
-      </button>
-
-      {/* Compose Modal */}
-      {showCompose && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={(e) => {
-          if (e.target === e.currentTarget) setShowCompose(false);
-        }}>
-          <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <ComposeTweet onClose={() => setShowCompose(false)} />
-          </div>
-        </div>
-      )}
-    </div>
+    </PageLayout>
   );
 }
