@@ -6,45 +6,65 @@ export default defineSchema({
     // Twitter data
     tweetId: v.optional(v.string()), // Twitter's tweet ID (if successfully posted)
     text: v.string(),
-    
+
     // Post status
     status: v.union(
       v.literal("pending"),
       v.literal("posted"),
       v.literal("failed")
     ),
-    
+
     // Author info
     authorName: v.optional(v.string()),
     authorUsername: v.optional(v.string()),
     authorId: v.optional(v.string()),
-    
+
     // Engagement metrics (from Twitter)
     likes: v.optional(v.number()),
     retweets: v.optional(v.number()),
     replies: v.optional(v.number()),
     quotes: v.optional(v.number()),
-    
+
     // Error tracking
     errorMessage: v.optional(v.string()),
     errorCode: v.optional(v.number()),
-    
+
     // Metadata
     createdAt: v.number(), // timestamp
     postedAt: v.optional(v.number()), // timestamp when successfully posted to Twitter
-    
+
     // Search/filter fields
     source: v.union(
       v.literal("compose"), // Posted via compose
       v.literal("timeline"), // Fetched from timeline
       v.literal("search") // Fetched from search
     ),
-    
+
     // Original query/username for context
     query: v.optional(v.string()),
+
+    // AI Generation metadata
+    isAiGenerated: v.optional(v.boolean()), // Flag for AI-generated tweets
+    aiModel: v.optional(v.string()), // Model used (e.g., "gemini-2.5-flash")
+    niche: v.optional(v.string()), // Selected niche/category
+    subcategory: v.optional(v.string()), // Selected subcategory
+    aiGuidance: v.optional(v.string()), // User-provided guidance
+    aiPrompt: v.optional(v.string()), // Full prompt sent to AI
   })
     .index("by_status", ["status"])
     .index("by_created", ["createdAt"])
     .index("by_tweet_id", ["tweetId"])
-    .index("by_source", ["source"]),
+    .index("by_source", ["source"])
+    .index("by_ai_generated", ["isAiGenerated"])
+    .index("by_niche", ["niche"]),
+
+  // Gemini API rate limiting
+  geminiRateLimits: defineTable({
+    endpoint: v.string(), // API endpoint identifier
+    requestCount: v.number(), // Current request count
+    limit: v.number(), // Maximum allowed requests
+    resetTime: v.number(), // Timestamp when limit resets
+    lastUpdated: v.number(), // Last update timestamp
+  })
+    .index("by_endpoint", ["endpoint"]),
 });

@@ -26,10 +26,17 @@ export const addTweet = mutation({
       v.literal("search")
     ),
     query: v.optional(v.string()),
+    // AI Generation metadata
+    isAiGenerated: v.optional(v.boolean()),
+    aiModel: v.optional(v.string()),
+    niche: v.optional(v.string()),
+    subcategory: v.optional(v.string()),
+    aiGuidance: v.optional(v.string()),
+    aiPrompt: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const now = Date.now();
-    
+
     return await ctx.db.insert("tweets", {
       ...args,
       createdAt: now,
@@ -53,7 +60,7 @@ export const updateTweetStatus = mutation({
   },
   handler: async (ctx, args) => {
     const { id, ...updates } = args;
-    
+
     await ctx.db.patch(id, {
       ...updates,
       postedAt: args.status === "posted" ? Date.now() : undefined,
@@ -75,13 +82,13 @@ export const getTweets = query({
   },
   handler: async (ctx, args) => {
     const limit = args.limit ?? 50;
-    
+
     let tweetsQuery = ctx.db.query("tweets").order("desc");
-    
+
     if (args.source) {
       tweetsQuery = tweetsQuery.filter((q) => q.eq(q.field("source"), args.source));
     }
-    
+
     return await tweetsQuery.take(limit);
   },
 });
@@ -98,7 +105,7 @@ export const getTweetsByStatus = query({
   },
   handler: async (ctx, args) => {
     const limit = args.limit ?? 50;
-    
+
     return await ctx.db
       .query("tweets")
       .withIndex("by_status", (q) => q.eq("status", args.status))
@@ -116,12 +123,12 @@ export const searchTweets = query({
   handler: async (ctx, args) => {
     const limit = args.limit ?? 50;
     const searchLower = args.searchText.toLowerCase();
-    
+
     const allTweets = await ctx.db
       .query("tweets")
       .order("desc")
       .take(200); // Search within recent 200 tweets
-    
+
     return allTweets
       .filter((tweet) => tweet.text.toLowerCase().includes(searchLower))
       .slice(0, limit);
@@ -155,7 +162,7 @@ export const deleteTweet = mutation({
 export const getStats = query({
   handler: async (ctx) => {
     const allTweets = await ctx.db.query("tweets").collect();
-    
+
     return {
       total: allTweets.length,
       posted: allTweets.filter((t) => t.status === "posted").length,

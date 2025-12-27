@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as geminiLimits from "../geminiLimits.js";
 import type * as tweets from "../tweets.js";
 
 import type {
@@ -17,6 +18,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  geminiLimits: typeof geminiLimits;
   tweets: typeof tweets;
 }>;
 
