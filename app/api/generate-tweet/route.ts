@@ -1,15 +1,14 @@
 import { NextResponse } from 'next/server';
-import { generateTweetWithGemini } from '@/lib/gemini-client';
-import { addHashtagsToTweet } from '@/lib/hashtags';
 
-export const dynamic = 'force-dynamic';
 
 export async function POST(request: Request) {
     try {
         const body = await request.json();
-        const { niche, subcategory, guidance } = body;
+        const { niche, subcategory, guidance, model } = body;
 
-        // Validate inputs
+        // Model is technically optional now or defaults to apifreellm if provided, 
+        // but we'll ignore it or enforce apifreellm logic.
+
         if (!niche || !subcategory) {
             return NextResponse.json(
                 { error: 'Niche and subcategory are required' },
@@ -17,48 +16,58 @@ export async function POST(request: Request) {
             );
         }
 
-        // Generate tweet using Gemini (with retry logic)
-        const { text, prompt } = await generateTweetWithGemini(
-            niche,
-            subcategory,
-            guidance
-        );
+        let prompt = `Write a short, engaging tweet about ${subcategory} in the ${niche} niche.`;
+        if (guidance) {
+            prompt += ` Guidance: ${guidance}.`;
+        }
+        prompt += ` Include 2 relevant hashtags. Do not include quotes.`;
 
-        // Add smart hashtags if not already present
-        const tweetWithHashtags = addHashtagsToTweet(text, niche, subcategory);
+        let tweetText = '';
+        let promptUsed = '';
+
+        // APIFreeLLM (Default/Only option)
+        const API_URL = process.env.APIFREELLM_FREE_URL || "https://apifreellm.com/api/chat";
+
+        try {
+            const apiResponse = await fetch(API_URL, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    message: prompt
+                }),
+            });
+
+            if (!apiResponse.ok) {
+                const errorData = await apiResponse.json().catch(() => ({}));
+                console.error("APIFreeLLM error:", errorData);
+                throw new Error(errorData.error || `APIFreeLLM request failed with status ${apiResponse.status}`);
+            }
+
+            const data = await apiResponse.json();
+            tweetText = data.response; // Assuming basic format { response: "text" } based on previous usage
+            promptUsed = prompt;
+
+        } catch (error) {
+            console.error("APIFreeLLM generation error:", error);
+            throw new Error("Failed to generate tweet with APIFreeLLM. Please try again later.");
+        }
 
         return NextResponse.json({
-            success: true,
-            tweet: tweetWithHashtags,
-            prompt,
+            tweet: tweetText,
+            prompt: promptUsed,
             metadata: {
+                model: 'apifreellm-free',
                 niche,
                 subcategory,
-                guidance,
-                model: 'gemini-2.5-flash',
-                generatedAt: Date.now(),
-                hashtagsAdded: text !== tweetWithHashtags,
-            },
+                guidance
+            }
         });
+
     } catch (error: unknown) {
-        console.error('Tweet generation error:', error);
-
+        console.error('Error generating tweet:', error);
         const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-
-        // Check for specific Gemini API errors
-        if (errorMessage.includes('API key')) {
-            return NextResponse.json(
-                { error: 'Gemini API key is not configured. Please add GEMINI_API_KEY to your environment variables.' },
-                { status: 500 }
-            );
-        }
-
-        if (errorMessage.includes('quota') || errorMessage.includes('rate limit')) {
-            return NextResponse.json(
-                { error: 'Rate limit exceeded. Please try again later.' },
-                { status: 429 }
-            );
-        }
 
         return NextResponse.json(
             { error: errorMessage },

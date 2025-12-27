@@ -45,7 +45,7 @@ export default defineSchema({
 
     // AI Generation metadata
     isAiGenerated: v.optional(v.boolean()), // Flag for AI-generated tweets
-    aiModel: v.optional(v.string()), // Model used (e.g., "gemini-2.5-flash")
+    aiModel: v.optional(v.string()), // Model used (e.g., "apifreellm-free")
     niche: v.optional(v.string()), // Selected niche/category
     subcategory: v.optional(v.string()), // Selected subcategory
     aiGuidance: v.optional(v.string()), // User-provided guidance
@@ -58,8 +58,8 @@ export default defineSchema({
     .index("by_ai_generated", ["isAiGenerated"])
     .index("by_niche", ["niche"]),
 
-  // Gemini API rate limiting
-  geminiRateLimits: defineTable({
+  // API rate limiting
+  rateLimits: defineTable({
     endpoint: v.string(), // API endpoint identifier
     requestCount: v.number(), // Current request count
     limit: v.number(), // Maximum allowed requests

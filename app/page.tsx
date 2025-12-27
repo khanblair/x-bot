@@ -55,7 +55,7 @@ export default function Home() {
                     ✨ NEW: AI Tweet Generation
                   </h3>
                   <p className="text-lg text-muted mb-4">
-                    Generate professional, engaging tweets in seconds using Google's Gemini 2.5 Flash AI. Choose from 12 niches, 120+ subcategories, and let AI craft the perfect message with smart hashtags.
+                    Generate professional, engaging tweets in seconds using advanced AI models. Choose from 12 niches, 120+ subcategories, and let AI craft the perfect message with smart hashtags.
                   </p>
                   <div className="flex flex-wrap gap-2 justify-center md:justify-start">
                     <span className="px-3 py-1 rounded-full bg-purple-500/20 text-purple-600 dark:text-purple-400 text-sm font-medium">
@@ -170,15 +170,7 @@ export default function Home() {
                 </p>
               </GlassCard>
 
-              <GlassCard className="p-6 space-y-3">
-                <div className="w-12 h-12 rounded-full bg-pink-500/20 flex items-center justify-center">
-                  <Sparkles className="w-6 h-6 text-pink-500" />
-                </div>
-                <h4 className="text-lg font-bold">Gemini AI</h4>
-                <p className="text-sm text-muted">
-                  Google's Gemini 2.5 Flash for smart generation
-                </p>
-              </GlassCard>
+
 
               <GlassCard className="p-6 space-y-3">
                 <div className="w-12 h-12 rounded-full bg-green-500/20 flex items-center justify-center">

@@ -17,4 +17,11 @@ crons.daily(
     api.pushNotifications.cleanupOldNotifications
 );
 
+// Generate tweet every 2 hours
+crons.interval(
+    "generate-tweet",
+    { hours: 2 },
+    internal.generate.generateTweet
+);
+
 export default crons;

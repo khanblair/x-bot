@@ -28,7 +28,7 @@ export const addTweet = mutation({
     query: v.optional(v.string()),
     // AI Generation metadata
     isAiGenerated: v.optional(v.boolean()),
-    aiModel: v.optional(v.string()),
+    aiModel: v.optional(v.string()), // Model used
     niche: v.optional(v.string()),
     subcategory: v.optional(v.string()),
     aiGuidance: v.optional(v.string()),
@@ -169,5 +169,18 @@ export const getStats = query({
       failed: allTweets.filter((t) => t.status === "failed").length,
       pending: allTweets.filter((t) => t.status === "pending").length,
     };
+  },
+});
+
+// Get recent tweets for balancing algorithms
+export const getRecentTweets = query({
+  args: {
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("tweets")
+      .order("desc") // Newest first
+      .take(args.limit ?? 50);
   },
 });

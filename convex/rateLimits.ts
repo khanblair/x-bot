@@ -1,23 +1,34 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 
-// Get current Gemini API rate limits
+// Get current API rate limits
 export const getRateLimits = query({
-    args: {},
-    handler: async (ctx) => {
+    args: {
+        endpoint: v.optional(v.string()),
+    },
+    handler: async (ctx, args) => {
+        const endpoint = args.endpoint || "apifreellm-generate"; // Default to APIFreeLLM
+
+        // Define static limits for reference/fallback
+        const limitsConfig: Record<string, { limit: number; window: number }> = {
+            "generate-tweet": { limit: 15, window: 60000 },
+            "apifreellm-generate": { limit: 1, window: 5000 },
+        };
+        const config = limitsConfig[endpoint] || limitsConfig["apifreellm-generate"];
+
         const limits = await ctx.db
-            .query("geminiRateLimits")
-            .withIndex("by_endpoint", (q) => q.eq("endpoint", "generate-tweet"))
+            .query("rateLimits")
+            .withIndex("by_endpoint", (q) => q.eq("endpoint", endpoint))
             .first();
 
         if (!limits) {
             // Return default limits if not initialized
             return {
-                endpoint: "generate-tweet",
+                endpoint: endpoint,
                 requestCount: 0,
-                limit: 15, // 15 requests per minute for free tier
-                resetTime: Date.now() + 60000, // Reset in 1 minute
-                remaining: 15,
+                limit: config.limit,
+                resetTime: Date.now() + config.window,
+                remaining: config.limit,
             };
         }
 
@@ -27,7 +38,7 @@ export const getRateLimits = query({
             return {
                 ...limits,
                 requestCount: 0,
-                resetTime: now + 60000,
+                resetTime: now + config.window,
                 remaining: limits.limit,
             };
         }
@@ -45,8 +56,15 @@ export const updateRateLimit = mutation({
         endpoint: v.string(),
     },
     handler: async (ctx, args) => {
+        // Define limits configuration again to be safe
+        const limitsConfig: Record<string, { limit: number; window: number }> = {
+            "generate-tweet": { limit: 15, window: 60000 },
+            "apifreellm-generate": { limit: 1, window: 5000 },
+        };
+        const config = limitsConfig[args.endpoint] || limitsConfig["apifreellm-generate"];
+
         const existing = await ctx.db
-            .query("geminiRateLimits")
+            .query("rateLimits")
             .withIndex("by_endpoint", (q) => q.eq("endpoint", args.endpoint))
             .first();
 
@@ -54,21 +72,21 @@ export const updateRateLimit = mutation({
 
         if (!existing) {
             // Create new rate limit entry
-            await ctx.db.insert("geminiRateLimits", {
+            await ctx.db.insert("rateLimits", {
                 endpoint: args.endpoint,
                 requestCount: 1,
-                limit: 15,
-                resetTime: now + 60000,
+                limit: config.limit,
+                resetTime: now + config.window,
                 lastUpdated: now,
             });
-            return { success: true, remaining: 14 };
+            return { success: true, remaining: config.limit - 1 };
         }
 
         // Check if we need to reset
         if (now >= existing.resetTime) {
             await ctx.db.patch(existing._id, {
                 requestCount: 1,
-                resetTime: now + 60000,
+                resetTime: now + config.window,
                 lastUpdated: now,
             });
             return { success: true, remaining: existing.limit - 1 };
@@ -76,9 +94,11 @@ export const updateRateLimit = mutation({
 
         // Check if limit exceeded
         if (existing.requestCount >= existing.limit) {
+            const waitMs = existing.resetTime - Date.now();
+            const waitSeconds = Math.ceil(waitMs / 1000);
             return {
                 success: false,
-                error: "Rate limit exceeded",
+                error: `Rate limit exceeded. Please wait ${waitSeconds}s.`,
                 resetTime: existing.resetTime,
                 remaining: 0,
             };
@@ -104,14 +124,21 @@ export const resetRateLimit = mutation({
     },
     handler: async (ctx, args) => {
         const existing = await ctx.db
-            .query("geminiRateLimits")
+            .query("rateLimits")
             .withIndex("by_endpoint", (q) => q.eq("endpoint", args.endpoint))
             .first();
+
+        // Get config to set correct reset time
+        const limitsConfig: Record<string, { limit: number; window: number }> = {
+            "generate-tweet": { limit: 15, window: 60000 },
+            "apifreellm-generate": { limit: 1, window: 5000 },
+        };
+        const config = limitsConfig[args.endpoint] || limitsConfig["apifreellm-generate"];
 
         if (existing) {
             await ctx.db.patch(existing._id, {
                 requestCount: 0,
-                resetTime: Date.now() + 60000,
+                resetTime: Date.now() + config.window,
                 lastUpdated: Date.now(),
             });
         }

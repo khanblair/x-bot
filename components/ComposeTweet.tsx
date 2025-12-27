@@ -8,7 +8,7 @@ import { useMutation as useConvexMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import toast from 'react-hot-toast';
 import { getNicheOptions, getSubcategories } from '@/lib/niches';
-import { GeminiRateLimitIndicator } from './GeminiRateLimitIndicator';
+import { LLMRateLimitIndicator } from './LLMRateLimitIndicator';
 
 interface ComposeTweetProps {
   onClose?: () => void;
@@ -47,8 +47,12 @@ export function ComposeTweet({ onClose }: ComposeTweetProps) {
 
     try {
       // Update rate limit first
-      const limitResponse = await fetch('/api/gemini-limits', {
+      const endpoint = 'apifreellm-generate';
+
+      const limitResponse = await fetch('/api/ai-rate-limits', {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ endpoint }),
       });
 
       const limitData = await limitResponse.json();
@@ -66,6 +70,7 @@ export function ComposeTweet({ onClose }: ComposeTweetProps) {
           niche,
           subcategory,
           guidance: guidance.trim() || undefined,
+          model: 'apifreellm-free', // Force APIFreeLLM
         }),
       });
 
@@ -78,7 +83,7 @@ export function ComposeTweet({ onClose }: ComposeTweetProps) {
 
       setText(data.tweet);
       setAiMetadata({
-        model: 'gemini-2.5-flash',
+        model: 'apifreellm-free',
         prompt: data.prompt,
         niche: data.metadata.niche,
         subcategory: data.metadata.subcategory,
@@ -247,6 +252,8 @@ export function ComposeTweet({ onClose }: ComposeTweetProps) {
               <Wand2 className="w-4 h-4 sm:w-5 sm:h-5 text-purple-500" />
               <h4 className="font-semibold text-xs sm:text-sm">AI Generation Settings</h4>
             </div>
+
+            {/* Note: Model Selector REMOVED as we only support APIFreeLLM now */}
 
             {/* Niche Selector */}
             <div>
@@ -475,8 +482,8 @@ export function ComposeTweet({ onClose }: ComposeTweetProps) {
         )}
       </GlassCard>
 
-      {/* Gemini Rate Limit Indicator */}
-      {useAI && <GeminiRateLimitIndicator />}
+      {/* API Rate Limit Indicator */}
+      {useAI && <LLMRateLimitIndicator />}
     </div>
   );
 }

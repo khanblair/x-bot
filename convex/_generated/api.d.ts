@@ -9,8 +9,9 @@
  */
 
 import type * as crons from "../crons.js";
-import type * as geminiLimits from "../geminiLimits.js";
+import type * as generate from "../generate.js";
 import type * as pushNotifications from "../pushNotifications.js";
+import type * as rateLimits from "../rateLimits.js";
 import type * as tweets from "../tweets.js";
 
 import type {
@@ -21,8 +22,9 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   crons: typeof crons;
-  geminiLimits: typeof geminiLimits;
+  generate: typeof generate;
   pushNotifications: typeof pushNotifications;
+  rateLimits: typeof rateLimits;
   tweets: typeof tweets;
 }>;
 
