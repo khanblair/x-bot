@@ -1,8 +1,10 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { Twitter, Home, Search as SearchIcon } from 'lucide-react';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { useTheme } from '@/lib/theme-context';
 
 interface HeaderProps {
   showNavigation?: boolean;
@@ -10,13 +12,24 @@ interface HeaderProps {
 }
 
 export function Header({ showNavigation = true, currentPage }: HeaderProps) {
+  const { theme } = useTheme();
+  
   return (
     <header className="fixed top-0 left-0 right-0 z-50 glass-card mx-4 mt-4 rounded-2xl">
       <div className="container mx-auto px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-              <Twitter className="w-8 h-8 text-twitter-blue" />
+              <div className="relative w-8 h-8 transition-opacity duration-300">
+                <Image
+                  src={theme === 'dark' ? '/icons8-x-60-white.png' : '/icons8-x-60-black.png'}
+                  alt="X-Bot Logo"
+                  width={32}
+                  height={32}
+                  className="transition-all duration-300"
+                  priority
+                />
+              </div>
               <h1 className="text-2xl font-bold hidden sm:block">X-Bot</h1>
             </Link>
             {showNavigation && (

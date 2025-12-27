@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>X-Bot PWA Icon Generator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background: linear-gradient(135deg, #1DA1F2 0%, #7c3aed 50%, #ec4899 100%);
+            min-height: 100vh;
+            padding: 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 24px;
+            padding: 3rem;
+            max-width: 1200px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        h1 {
+            color: #1DA1F2;
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+            text-align: center;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 2rem;
+            font-size: 1.1rem;
+        }
+
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .control-group {
+            background: #f8f9fa;
+            padding: 1.5rem;
+            border-radius: 12px;
+        }
+
+        label {
+            display: block;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        select,
+        input[type="file"] {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1rem;
+            background: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        select:hover,
+        input[type="file"]:hover {
+            border-color: #1DA1F2;
+        }
+
+        select:focus,
+        input[type="file"]:focus {
+            outline: none;
+            border-color: #1DA1F2;
+            box-shadow: 0 0 0 3px rgba(29, 161, 242, 0.1);
+        }
+
+        .preview-section {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .preview-card {
+            background: white;
+            border-radius: 16px;
+            padding: 2rem;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        .preview-card h3 {
+            color: #333;
+            margin-bottom: 1rem;
+            font-size: 1.2rem;
+        }
+
+        .canvas-container {
+            display: inline-block;
+            margin: 1rem 0;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        canvas {
+            display: block;
+            max-width: 100%;
+            height: auto;
+        }
+
+        .size-info {
+            color: #666;
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+        }
+
+        button {
+            background: #1DA1F2;
+            color: white;
+            border: none;
+            padding: 0.75rem 2rem;
+            border-radius: 9999px;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 0.5rem;
+        }
+
+        button:hover {
+            background: #1a8cd8;
+            transform: scale(1.05);
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+
+        .instructions {
+            background: #e3f2fd;
+            border-left: 4px solid #1DA1F2;
+            padding: 1.5rem;
+            border-radius: 8px;
+            margin-bottom: 2rem;
+        }
+
+        .instructions h3 {
+            color: #1DA1F2;
+            margin-bottom: 0.5rem;
+        }
+
+        .instructions ol {
+            margin-left: 1.5rem;
+            color: #555;
+        }
+
+        .instructions li {
+            margin: 0.5rem 0;
+        }
+
+        .theme-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .theme-dark {
+            background: #000;
+            color: #fff;
+        }
+
+        .theme-light {
+            background: #fff;
+            color: #000;
+            border: 2px solid #e0e0e0;
+        }
+
+        .status {
+            text-align: center;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-top: 1rem;
+            font-weight: 600;
+        }
+
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .download-all-btn {
+            background: #7c3aed;
+            font-size: 1.2rem;
+            padding: 1rem 3rem;
+            margin: 2rem auto;
+            display: block;
+        }
+
+        .download-all-btn:hover {
+            background: #6d28d9;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>🎨 X-Bot PWA Icon Generator</h1>
+        <p class="subtitle">Generate perfectly sized PWA icons for your X-Bot application</p>
+
+        <div class="instructions">
+            <h3>📋 Instructions</h3>
+            <ol>
+                <li>Select the theme (Dark or Light background)</li>
+                <li>Choose the icon size you want to generate</li>
+                <li>Upload your X logo (white for dark theme, black for light theme)</li>
+                <li>Preview the generated icons below</li>
+                <li>Click individual download buttons or "Download All" to save</li>
+            </ol>
+        </div>
+
+        <div class="controls">
+            <div class="control-group">
+                <label for="theme">Theme</label>
+                <select id="theme">
+                    <option value="dark">Dark (Black Background)</option>
+                    <option value="light">Light (White Background)</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <label for="size">Icon Size</label>
+                <select id="size">
+                    <option value="all">All Sizes</option>
+                    <option value="192">192x192 (Standard)</option>
+                    <option value="512">512x512 (High-res)</option>
+                    <option value="16">16x16 (Favicon)</option>
+                    <option value="32">32x32 (Favicon)</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <label for="logo">Upload Logo</label>
+                <input type="file" id="logo" accept="image/png,image/svg+xml">
+            </div>
+        </div>
+
+        <button class="download-all-btn" id="downloadAll" style="display: none;">
+            📦 Download All Icons
+        </button>
+
+        <div class="preview-section" id="previews">
+            <!-- Previews will be generated here -->
+        </div>
+
+        <div id="status"></div>
+    </div>
+
+    <script>
+        const themeSelect = document.getElementById('theme');
+        const sizeSelect = document.getElementById('size');
+        const logoInput = document.getElementById('logo');
+        const previewsContainer = document.getElementById('previews');
+        const statusDiv = document.getElementById('status');
+        const downloadAllBtn = document.getElementById('downloadAll');
+
+        let logoImage = null;
+        let generatedCanvases = [];
+
+        // Load default logos
+        const defaultLogos = {
+            dark: 'icons8-x-60-white.png',
+            light: 'icons8-x-60-black.png'
+        };
+
+        // Load default logo based on theme
+        function loadDefaultLogo() {
+            const theme = themeSelect.value;
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+            img.onload = () => {
+                logoImage = img;
+                generatePreviews();
+            };
+            img.onerror = () => {
+                showStatus('Please upload a logo manually', 'error');
+            };
+            img.src = defaultLogos[theme];
+        }
+
+        // Handle logo upload
+        logoInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        logoImage = img;
+                        generatePreviews();
+                        showStatus('Logo loaded successfully!', 'success');
+                    };
+                    img.src = event.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // Handle theme change
+        themeSelect.addEventListener('change', () => {
+            if (!logoInput.files.length) {
+                loadDefaultLogo();
+            } else {
+                generatePreviews();
+            }
+        });
+
+        // Handle size change
+        sizeSelect.addEventListener('change', generatePreviews);
+
+        function generatePreviews() {
+            if (!logoImage) return;
+
+            previewsContainer.innerHTML = '';
+            generatedCanvases = [];
+            const theme = themeSelect.value;
+            const selectedSize = sizeSelect.value;
+            const backgroundColor = theme === 'dark' ? '#000000' : '#FFFFFF';
+
+            const sizes = selectedSize === 'all'
+                ? [16, 32, 192, 512]
+                : [parseInt(selectedSize)];
+
+            sizes.forEach(size => {
+                const { card, canvas, filename } = createIconPreview(size, backgroundColor, theme);
+                previewsContainer.appendChild(card);
+                generatedCanvases.push({ canvas, size, filename });
+            });
+
+            // Show download all button if multiple icons
+            downloadAllBtn.style.display = sizes.length > 1 ? 'block' : 'none';
+        }
+
+        function createIconPreview(size, backgroundColor, theme) {
+            const card = document.createElement('div');
+            card.className = 'preview-card';
+
+            const badge = document.createElement('span');
+            badge.className = `theme-badge theme-${theme}`;
+            badge.textContent = theme === 'dark' ? 'Dark Theme' : 'Light Theme';
+
+            const title = document.createElement('h3');
+            title.textContent = `${size}x${size}`;
+
+            const sizeInfo = document.createElement('div');
+            sizeInfo.className = 'size-info';
+            sizeInfo.textContent = size >= 192 ? 'PWA Icon' : 'Favicon';
+
+            const canvasContainer = document.createElement('div');
+            canvasContainer.className = 'canvas-container';
+
+            const canvas = document.createElement('canvas');
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext('2d');
+
+            // Draw background
+            ctx.fillStyle = backgroundColor;
+            ctx.fillRect(0, 0, size, size);
+
+            // Calculate logo size (60% of canvas with padding)
+            const logoSize = size * 0.6;
+            const x = (size - logoSize) / 2;
+            const y = (size - logoSize) / 2;
+
+            // Draw logo centered
+            ctx.drawImage(logoImage, x, y, logoSize, logoSize);
+
+            canvasContainer.appendChild(canvas);
+
+            // Naming convention
+            let filename;
+            if (size === 16 || size === 32) {
+                filename = `favicon-${size}x${size}.png`;
+            } else {
+                filename = `icon-${size}.png`;
+            }
+
+            const downloadBtn = document.createElement('button');
+            downloadBtn.textContent = `Download ${size}x${size}`;
+            downloadBtn.onclick = () => downloadIcon(canvas, filename);
+
+            card.appendChild(badge);
+            card.appendChild(title);
+            card.appendChild(sizeInfo);
+            card.appendChild(canvasContainer);
+            card.appendChild(downloadBtn);
+
+            return { card, canvas, filename };
+        }
+
+        function downloadIcon(canvas, filename) {
+            canvas.toBlob((blob) => {
+                if (!blob) {
+                    showStatus('Error creating image', 'error');
+                    return;
+                }
+
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+
+                // IMPORTANT: Append to body, click, then remove
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+
+                // Clean up
+                setTimeout(() => URL.revokeObjectURL(url), 100);
+                showStatus(`Downloaded ${filename}`, 'success');
+            }, 'image/png');
+        }
+
+        // Download all icons
+        downloadAllBtn.addEventListener('click', async () => {
+            showStatus('Preparing download...', 'success');
+
+            // Download each icon individually with a small delay
+            for (let i = 0; i < generatedCanvases.length; i++) {
+                const { canvas, filename } = generatedCanvases[i];
+                await new Promise(resolve => {
+                    setTimeout(() => {
+                        downloadIcon(canvas, filename);
+                        resolve();
+                    }, i * 300); // 300ms delay between downloads
+                });
+            }
+
+            showStatus(`Downloaded all ${generatedCanvases.length} icons!`, 'success');
+        });
+
+        function showStatus(message, type) {
+            statusDiv.textContent = message;
+            statusDiv.className = `status ${type}`;
+            setTimeout(() => {
+                statusDiv.textContent = '';
+                statusDiv.className = 'status';
+            }, 3000);
+        }
+
+        // Initialize with default logo
+        loadDefaultLogo();
+    </script>
+</body>
+
+</html>

@@ -32,7 +32,7 @@ export function TweetCard({ tweet }: TweetCardProps) {
   };
 
   return (
-    <GlassCard hover className="p-6 space-y-4">
+    <GlassCard hover className="p-6 space-y-4 transition-all duration-300">
       {/* Author Info */}
       <div className="flex items-start gap-3">
         {tweet.author?.profile_image_url ? (
@@ -44,10 +44,10 @@ export function TweetCard({ tweet }: TweetCardProps) {
             className="rounded-full"
           />
         ) : (
-          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-twitter-blue to-purple-500" />
+          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-twitter-blue to-purple-500 flex-shrink-0" />
         )}
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <h3 className="font-bold text-foreground truncate">
               {tweet.author?.name || 'Unknown User'}
             </h3>
@@ -61,13 +61,13 @@ export function TweetCard({ tweet }: TweetCardProps) {
       </div>
 
       {/* Tweet Text */}
-      <p className="text-foreground leading-relaxed whitespace-pre-wrap">
+      <p className="text-foreground leading-relaxed whitespace-pre-wrap break-words">
         {tweet.text}
       </p>
 
       {/* Engagement Metrics */}
       {tweet.public_metrics && (
-        <div className="flex items-center gap-6 pt-2">
+        <div className="flex items-center gap-4 md:gap-6 pt-2 flex-wrap">
           <button className="flex items-center gap-2 text-muted hover:text-twitter-blue transition-colors group">
             <MessageCircle className="w-5 h-5 group-hover:scale-110 transition-transform" />
             <span className="text-sm">

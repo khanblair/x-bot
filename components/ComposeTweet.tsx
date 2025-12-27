@@ -25,7 +25,7 @@ export function ComposeTweet({ onClose }: ComposeTweetProps) {
       if (!tweetText.trim()) {
         throw new Error('Tweet cannot be empty');
       }
-      
+
       if (tweetText.length > 280) {
         throw new Error('Tweet exceeds 280 character limit');
       }
@@ -44,10 +44,10 @@ export function ComposeTweet({ onClose }: ComposeTweetProps) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ text: tweetText }),
         });
-        
+
         if (!response.ok) {
           const error = await response.json();
-          
+
           // Update Convex with failure
           await updateTweetStatus({
             id: convexId,
@@ -55,19 +55,19 @@ export function ComposeTweet({ onClose }: ComposeTweetProps) {
             errorMessage: error.error || 'Failed to post tweet',
             errorCode: response.status,
           });
-          
+
           throw new Error(error.error || 'Failed to post tweet');
         }
-        
+
         const data = await response.json();
-        
+
         // Update Convex with success
         await updateTweetStatus({
           id: convexId,
           status: 'posted',
           tweetId: data.tweet?.id,
         });
-        
+
         return { ...data, convexId };
       } catch (err: any) {
         // Update Convex with failure
@@ -85,7 +85,7 @@ export function ComposeTweet({ onClose }: ComposeTweetProps) {
         icon: '🎉',
         duration: 5000,
       });
-      
+
       // Invalidate queries to refresh feed
       queryClient.invalidateQueries({ queryKey: ['tweets'] });
       setText('');
@@ -109,24 +109,24 @@ export function ComposeTweet({ onClose }: ComposeTweetProps) {
       });
       return;
     }
-    
+
     if (text.length > 280) {
       toast.error(`Tweet is ${text.length - 280} characters too long`, {
         icon: '⚠️',
       });
       return;
     }
-    
+
     postTweet.mutate(text);
   };
 
   const characterCount = text.length;
   const isOverLimit = characterCount > 280;
-  const characterColor = 
+  const characterColor =
     characterCount === 0 ? 'text-muted' :
-    characterCount > 260 ? 'text-red-500' :
-    characterCount > 240 ? 'text-yellow-500' :
-    'text-twitter-blue';
+      characterCount > 260 ? 'text-red-500' :
+        characterCount > 240 ? 'text-yellow-500' :
+          'text-twitter-blue';
 
   return (
     <GlassCard className="p-6">
@@ -148,8 +148,13 @@ export function ComposeTweet({ onClose }: ComposeTweetProps) {
             value={text}
             onChange={(e) => setText(e.target.value)}
             placeholder="What's happening?"
-            className="w-full min-h-[120px] px-4 py-3 rounded-2xl glass-card focus:outline-none focus:ring-2 focus:ring-twitter-blue resize-none"
+            className={`w-full min-h-[120px] px-4 py-3 rounded-2xl glass-card focus:outline-none resize-none transition-all duration-200 ${isOverLimit
+                ? 'ring-2 ring-red-500 focus:ring-red-500'
+                : 'focus:ring-2 focus:ring-twitter-blue'
+              }`}
             disabled={postTweet.isPending}
+            aria-invalid={isOverLimit}
+            aria-describedby={isOverLimit ? 'character-error' : undefined}
           />
 
           <div className="flex items-center justify-between mt-4">
@@ -164,10 +169,36 @@ export function ComposeTweet({ onClose }: ComposeTweetProps) {
             </div>
 
             <div className="flex items-center gap-4">
-              <span className={`text-sm font-medium ${characterColor}`}>
-                {characterCount}/280
-              </span>
-              
+              {/* Character count with progress ring */}
+              <div className="relative flex items-center justify-center">
+                <svg className="w-8 h-8 transform -rotate-90">
+                  <circle
+                    cx="16"
+                    cy="16"
+                    r="14"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    fill="none"
+                    className="text-muted/20"
+                  />
+                  <circle
+                    cx="16"
+                    cy="16"
+                    r="14"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    fill="none"
+                    strokeDasharray={`${2 * Math.PI * 14}`}
+                    strokeDashoffset={`${2 * Math.PI * 14 * (1 - characterCount / 280)}`}
+                    className={`transition-all duration-200 ${characterColor}`}
+                    strokeLinecap="round"
+                  />
+                </svg>
+                <span className={`absolute text-xs font-medium ${characterColor}`}>
+                  {characterCount > 260 ? 280 - characterCount : ''}
+                </span>
+              </div>
+
               <button
                 onClick={() => setShowPreview(true)}
                 disabled={!text.trim() || isOverLimit || postTweet.isPending}
@@ -180,7 +211,8 @@ export function ComposeTweet({ onClose }: ComposeTweetProps) {
           </div>
 
           {isOverLimit && (
-            <p className="text-red-500 text-sm mt-2">
+            <p className="text-red-500 text-sm mt-2 flex items-center gap-2" id="character-error" role="alert">
+              <span className="font-bold">⚠️</span>
               Tweet is {characterCount - 280} characters over the limit
             </p>
           )}

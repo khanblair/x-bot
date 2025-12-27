@@ -16,10 +16,11 @@ export async function GET() {
         'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600',
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Twitter API Error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
     return NextResponse.json(
-      { error: error.message || 'Failed to fetch user info' },
+      { error: errorMessage },
       { status: 500 }
     );
   }
