@@ -67,4 +67,39 @@ export default defineSchema({
     lastUpdated: v.number(), // Last update timestamp
   })
     .index("by_endpoint", ["endpoint"]),
+
+  // Push notification subscriptions
+  pushSubscriptions: defineTable({
+    endpoint: v.string(), // Push subscription endpoint
+    keys: v.object({
+      p256dh: v.string(),
+      auth: v.string(),
+    }),
+    userAgent: v.optional(v.string()), // Browser/device info
+    createdAt: v.number(),
+    lastUsed: v.number(),
+  })
+    .index("by_endpoint", ["endpoint"])
+    .index("by_created", ["createdAt"]),
+
+  // Notification history
+  notifications: defineTable({
+    title: v.string(),
+    body: v.string(),
+    icon: v.optional(v.string()),
+    badge: v.optional(v.string()),
+    data: v.optional(v.any()), // Additional data
+    type: v.union(
+      v.literal("reminder"),
+      v.literal("info"),
+      v.literal("success"),
+      v.literal("error")
+    ),
+    read: v.boolean(),
+    sentAt: v.number(),
+    clickedAt: v.optional(v.number()),
+  })
+    .index("by_sent", ["sentAt"])
+    .index("by_read", ["read"])
+    .index("by_type", ["type"]),
 });

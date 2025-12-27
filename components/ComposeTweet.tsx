@@ -208,9 +208,9 @@ export function ComposeTweet({ onClose }: ComposeTweetProps) {
 
   return (
     <div className="space-y-4">
-      <GlassCard className="p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-xl font-bold">Compose Tweet</h3>
+      <GlassCard className="p-4 sm:p-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-3">
+          <h3 className="text-lg sm:text-xl font-bold">Compose Tweet</h3>
           <div className="flex items-center gap-2">
             <button
               onClick={() => {
@@ -220,13 +220,13 @@ export function ComposeTweet({ onClose }: ComposeTweetProps) {
                   setAiMetadata(null);
                 }
               }}
-              className={`px-4 py-2 rounded-full flex items-center gap-2 transition-all ${useAI
+              className={`px-3 sm:px-4 py-2 rounded-full flex items-center gap-2 transition-all text-sm ${useAI
                 ? 'bg-purple-500 text-white'
                 : 'glass-card hover:scale-105'
                 }`}
             >
               <Sparkles className="w-4 h-4" />
-              <span className="text-sm font-medium">
+              <span className="font-medium">
                 {useAI ? 'AI Mode' : 'Manual'}
               </span>
             </button>
@@ -242,15 +242,15 @@ export function ComposeTweet({ onClose }: ComposeTweetProps) {
         </div>
 
         {useAI && !showPreview && (
-          <div className="mb-4 space-y-4 p-4 rounded-xl glass-card border-2 border-purple-500/20">
-            <div className="flex items-center gap-2 mb-2">
-              <Wand2 className="w-5 h-5 text-purple-500" />
-              <h4 className="font-semibold text-sm">AI Generation Settings</h4>
+          <div className="mb-4 space-y-3 sm:space-y-4 p-3 sm:p-4 rounded-xl glass-card border-2 border-purple-500/20">
+            <div className="flex items-center gap-2 mb-1">
+              <Wand2 className="w-4 h-4 sm:w-5 sm:h-5 text-purple-500" />
+              <h4 className="font-semibold text-xs sm:text-sm">AI Generation Settings</h4>
             </div>
 
             {/* Niche Selector */}
             <div>
-              <label htmlFor="niche" className="block text-sm font-medium mb-2">
+              <label htmlFor="niche" className="block text-xs sm:text-sm font-medium mb-1.5 sm:mb-2">
                 Select Niche *
               </label>
               <select
@@ -260,7 +260,7 @@ export function ComposeTweet({ onClose }: ComposeTweetProps) {
                   setNiche(e.target.value);
                   setSubcategory('');
                 }}
-                className="w-full px-4 py-2 rounded-lg glass-card focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="w-full px-3 sm:px-4 py-2 text-sm rounded-lg glass-card focus:outline-none focus:ring-2 focus:ring-purple-500"
                 disabled={isGenerating}
               >
                 <option value="">Choose a niche...</option>
@@ -275,14 +275,14 @@ export function ComposeTweet({ onClose }: ComposeTweetProps) {
             {/* Subcategory Selector */}
             {niche && (
               <div>
-                <label htmlFor="subcategory" className="block text-sm font-medium mb-2">
+                <label htmlFor="subcategory" className="block text-xs sm:text-sm font-medium mb-1.5 sm:mb-2">
                   Select Subcategory *
                 </label>
                 <select
                   id="subcategory"
                   value={subcategory}
                   onChange={(e) => setSubcategory(e.target.value)}
-                  className="w-full px-4 py-2 rounded-lg glass-card focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-3 sm:px-4 py-2 text-sm rounded-lg glass-card focus:outline-none focus:ring-2 focus:ring-purple-500"
                   disabled={isGenerating}
                 >
                   <option value="">Choose a subcategory...</option>
@@ -297,7 +297,7 @@ export function ComposeTweet({ onClose }: ComposeTweetProps) {
 
             {/* Guidance Input */}
             <div>
-              <label htmlFor="guidance" className="block text-sm font-medium mb-2">
+              <label htmlFor="guidance" className="block text-xs sm:text-sm font-medium mb-1.5 sm:mb-2">
                 Additional Guidance (Optional)
               </label>
               <textarea
@@ -305,7 +305,7 @@ export function ComposeTweet({ onClose }: ComposeTweetProps) {
                 value={guidance}
                 onChange={(e) => setGuidance(e.target.value)}
                 placeholder="E.g., 'Focus on beginners', 'Include a statistic', 'Make it inspirational'..."
-                className="w-full px-4 py-2 rounded-lg glass-card focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
+                className="w-full px-3 sm:px-4 py-2 text-sm rounded-lg glass-card focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
                 rows={2}
                 maxLength={500}
                 disabled={isGenerating}
@@ -317,17 +317,17 @@ export function ComposeTweet({ onClose }: ComposeTweetProps) {
             <button
               onClick={generateTweet}
               disabled={!niche || !subcategory || isGenerating}
-              className="w-full btn-primary py-3 flex items-center justify-center gap-2 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full btn-primary py-2.5 sm:py-3 flex items-center justify-center gap-2 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base"
             >
               {isGenerating ? (
                 <>
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  Generating...
+                  <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" />
+                  <span className="text-sm sm:text-base">Generating...</span>
                 </>
               ) : (
                 <>
-                  <Sparkles className="w-5 h-5" />
-                  Generate Tweet with AI
+                  <Sparkles className="w-4 h-4 sm:w-5 sm:h-5" />
+                  <span className="text-sm sm:text-base">Generate Tweet with AI</span>
                 </>
               )}
             </button>

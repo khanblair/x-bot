@@ -18,7 +18,8 @@
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-hot-toast": "^2.6.0",
-    "twitter-api-v2": "^1.28.0"
+    "twitter-api-v2": "^1.28.0",
+    "web-push": "^3.6.7"
   },
   "devDependencies": {
     "@next/swc-wasm-nodejs": "^16.1.1",

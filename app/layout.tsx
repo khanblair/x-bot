@@ -5,6 +5,7 @@ import { ThemeProvider } from "@/lib/theme-context";
 import { QueryProvider } from "@/lib/query-provider";
 import { ConvexProvider } from "@/lib/convex-provider";
 import { Toaster } from "react-hot-toast";
+import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -108,6 +109,7 @@ export default function RootLayout({
                 }}
               />
               {children}
+              <PWAInstallPrompt />
             </QueryProvider>
           </ConvexProvider>
         </ThemeProvider>
