@@ -3,10 +3,10 @@ import { internal, api } from "./_generated/api";
 
 const crons = cronJobs();
 
-// Send tweet reminder every minute
+// Send tweet reminder every 6 hours
 crons.interval(
     "tweet-reminder",
-    { minutes: 1 }, // Every minute
+    { hours: 6 }, // Every 6 hours
     internal.pushNotifications.sendTweetReminder
 );
 
