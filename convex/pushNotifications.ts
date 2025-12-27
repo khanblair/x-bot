@@ -205,7 +205,7 @@ export const cleanupOldNotifications = mutation({
     },
 });
 
-// Send push notification action (calls external API)
+// Send push notification action (calls external API via HTTP)
 export const sendPushNotification = action({
     args: {
         title: v.string(),
@@ -221,7 +221,7 @@ export const sendPushNotification = action({
         ),
     },
     handler: async (ctx, args) => {
-        // Create notification record
+        // Create notification record first
         await ctx.runMutation(api.pushNotifications.createNotification, {
             title: args.title,
             body: args.body,
@@ -231,75 +231,105 @@ export const sendPushNotification = action({
             type: args.type,
         });
 
-        // Get all subscriptions
-        const subscriptions = await ctx.runQuery(api.pushNotifications.getSubscriptions);
+        // Determine the correct URL based on environment
+        // Try production URL first, fallback to local
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL_PROD ||
+            process.env.NEXT_PUBLIC_APP_URL_LOCAL ||
+            process.env.NEXT_PUBLIC_APP_URL ||
+            'http://localhost:3000';
 
-        // Send to our API endpoint which will handle web-push
-        const results = await Promise.allSettled(
-            subscriptions.map(async (sub) => {
-                try {
-                    const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/send-push`, {
-                        method: "POST",
-                        headers: {
-                            "Content-Type": "application/json",
-                        },
-                        body: JSON.stringify({
-                            subscription: {
-                                endpoint: sub.endpoint,
-                                keys: sub.keys,
-                            },
-                            notification: {
-                                title: args.title,
-                                body: args.body,
-                                icon: args.icon || "/icon-192.png",
-                                badge: args.badge || "/icon-192.png",
-                                data: args.data,
-                            },
-                        }),
-                    });
+        try {
+            const response = await fetch(`${appUrl}/api/broadcast-push`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    title: args.title,
+                    body: args.body,
+                    icon: args.icon || '/icon-192.png',
+                    badge: args.badge || '/icon-192.png',
+                    data: args.data,
+                    type: args.type,
+                }),
+            });
 
-                    if (!response.ok) {
-                        throw new Error(`Failed to send push: ${response.statusText}`);
-                    }
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
 
-                    return { success: true, endpoint: sub.endpoint };
-                } catch (error) {
-                    console.error("Error sending push to", sub.endpoint, error);
-                    return { success: false, endpoint: sub.endpoint, error };
-                }
-            })
-        );
+            const result = await response.json();
+            console.log('Push broadcast result:', result);
 
-        const successful = results.filter((r) => r.status === "fulfilled" && r.value.success).length;
-        const failed = results.length - successful;
-
-        return {
-            total: results.length,
-            successful,
-            failed,
-        };
+            return result;
+        } catch (error) {
+            console.error('Error broadcasting push notifications:', error);
+            // Don't throw - we still created the notification in the database
+            return {
+                total: 0,
+                successful: 0,
+                failed: 0,
+                error: error instanceof Error ? error.message : 'Unknown error',
+            };
+        }
     },
 });
 
 // Internal mutation for cron job - send tweet reminder
 export const sendTweetReminder = internalMutation({
     handler: async (ctx) => {
-        // Schedule the action to send push notifications
-        await ctx.scheduler.runAfter(0, internal.pushNotifications.sendTweetReminderAction);
-    },
-});
-
-// Internal action for sending tweet reminder
-export const sendTweetReminderAction = internalAction({
-    handler: async (ctx) => {
-        await ctx.runAction(api.pushNotifications.sendPushNotification, {
+        // Create notification record
+        await ctx.db.insert("notifications", {
             title: "✨ Time to Create!",
             body: "Generate an engaging tweet with AI and grow your X presence!",
             icon: "/icon-192.png",
             badge: "/icon-192.png",
             data: { url: "/feed", action: "compose" },
             type: "reminder",
+            read: false,
+            sentAt: Date.now(),
         });
+
+        // Schedule the action to send push notifications
+        await ctx.scheduler.runAfter(0, internal.pushNotifications.sendTweetReminderAction);
+    },
+});
+
+// Internal action for sending tweet reminder via HTTP
+export const sendTweetReminderAction = internalAction({
+    handler: async (ctx) => {
+        // Determine the correct URL based on environment
+        // Try production URL first, fallback to local
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL_PROD ||
+            process.env.NEXT_PUBLIC_APP_URL_LOCAL ||
+            process.env.NEXT_PUBLIC_APP_URL ||
+            'http://localhost:3000';
+
+        try {
+            const response = await fetch(`${appUrl}/api/broadcast-push`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    title: "✨ Time to Create!",
+                    body: "Generate an engaging tweet with AI and grow your X presence!",
+                    icon: "/icon-192.png",
+                    badge: "/icon-192.png",
+                    data: { url: "/feed", action: "compose" },
+                    type: "reminder",
+                }),
+            });
+
+            if (response.ok) {
+                const result = await response.json();
+                console.log('Tweet reminder sent:', result);
+            } else {
+                console.error('Failed to send tweet reminder:', response.status);
+            }
+        } catch (error) {
+            console.error('Error sending tweet reminder:', error);
+        }
     },
 });
 
