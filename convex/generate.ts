@@ -1,34 +1,42 @@
+
 "use node";
 import { internalAction } from "./_generated/server";
 import { internal, api } from "./_generated/api";
 import { v } from "convex/values";
 
-const PREDEFINED_TOPICS = [
-    { niche: "Tech", subcategory: "Web Development" },
-    { niche: "Tech", subcategory: "AI & Machine Learning" },
-    { niche: "Productivity", subcategory: "Time Management" },
-    { niche: "Coding", subcategory: "JavaScript Tips" },
-    { niche: "Career", subcategory: "Remote Work" },
-];
+import { HASHTAG_DATABASE } from "./hashtags";
 
-export const generateTweet = internalAction({
+const PREDEFINED_TOPICS = Object.entries(HASHTAG_DATABASE).flatMap(([niche, subcategories]) =>
+    Object.keys(subcategories).map((subcategory) => ({
+        niche: niche.charAt(0).toUpperCase() + niche.slice(1), // Capitalize for consistency
+        subcategory,
+    }))
+);
+
+/**
+ * 1. Generate Draft Action (Runs every 30 mins)
+ * - Generates content via AI
+ * - Saves to DB as "pending"
+ * - Notifies user of new draft
+ */
+export const generateDraft = internalAction({
     args: {},
     handler: async (ctx) => {
         const API_URL = process.env.APIFREELLM_FREE_URL || "https://apifreellm.com/api/chat";
         const ENDPOINT_ID = "apifreellm-generate";
 
         // 1. Daily Limit Check (Max 15 per day)
+        // We count ALL tweets created today (pending or posted) to avoid spamming DB
         const recentTweets = await ctx.runQuery(api.tweets.getRecentTweets, { limit: 50 });
         const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000;
         const tweetsLast24h = recentTweets.filter(t => t.createdAt > oneDayAgo);
 
         if (tweetsLast24h.length >= 15) {
-            console.log("Daily tweet limit (15) reached. Skipping.");
+            console.log("Daily tweet generation limit (15) reached. Skipping draft generation.");
             return;
         }
 
         // 2. Niche Balancing
-        // Count usage of each niche in the recent history
         const nicheCounts: Record<string, number> = {};
         PREDEFINED_TOPICS.forEach(t => { nicheCounts[t.niche] = 0; });
 
@@ -38,146 +46,210 @@ export const generateTweet = internalAction({
             }
         });
 
-        // Find niches with minimum usage
         let minCount = Infinity;
         Object.values(nicheCounts).forEach(c => {
             if (c < minCount) minCount = c;
         });
 
         const availableNiches = Object.keys(nicheCounts).filter(n => nicheCounts[n] === minCount);
-
-        // Filter topics that match available niches
         const candidateTopics = PREDEFINED_TOPICS.filter(t => availableNiches.includes(t.niche));
         const topic = candidateTopics[Math.floor(Math.random() * candidateTopics.length)];
 
-        console.log(`Selected topic: ${topic.niche} / ${topic.subcategory} (Usage count: ${minCount})`);
+        console.log(`Generating draft for: ${topic.niche} / ${topic.subcategory}`);
 
-        // 3. Check Rate Limits (APIFreeLLM)
+        // 3. Check Rate Limits
         const rateLimit = await ctx.runMutation(api.rateLimits.updateRateLimit, {
             endpoint: ENDPOINT_ID,
         });
 
         if (!rateLimit.success) {
-            console.log(`Rate limit exceeded for ${ENDPOINT_ID}. Skipping generation.`);
+            console.log(`Rate limit exceeded for ${ENDPOINT_ID}. Skipping.`);
             return;
         }
 
-        // 4. Generate Tweet
-        const prompt = `Write a short, engaging tweet about ${topic.subcategory} in the ${topic.niche} niche. Include 2 relevant hashtags. Do not include quotes.`;
+        // 4. Generate Content
+        // Instructing AI to include hashtags
+        const prompt = `Write a short, engaging tweet about ${topic.subcategory} in the ${topic.niche} niche. Include 2-3 relevant hashtags. Do not include quotes.`;
+
+        // Retry loop for API calls
+        let tweetContent = "";
+        let attempt = 0;
+        const maxAttempts = 3;
+
+        while (attempt < maxAttempts) {
+            try {
+                attempt++;
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s timeout
+
+                const response = await fetch(API_URL, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Accept": "application/json",
+                        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                    },
+                    body: JSON.stringify({ message: prompt }),
+                    signal: controller.signal,
+                });
+                clearTimeout(timeoutId);
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error(`Attempt ${attempt} failed: APIFreeLLM status ${response.status}: ${errorText.substring(0, 200)}`);
+                    if (attempt === maxAttempts) return; // Give up after max attempts
+                    await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2s before retry
+                    continue;
+                }
+
+                const data = await response.json();
+                if (data.error || !data.response) {
+                    console.error(`Attempt ${attempt} error:`, data);
+                    if (attempt === maxAttempts) return;
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                    continue;
+                }
+
+                tweetContent = data.response;
+                break; // Success!
+
+            } catch (error) {
+                console.error(`Attempt ${attempt} exception:`, error);
+                if (attempt === maxAttempts) return;
+                await new Promise(resolve => setTimeout(resolve, 2000));
+            }
+        }
+
+        // 5. Save to DB (Status: Pending)
+        await ctx.runMutation(api.tweets.addTweet, {
+            text: tweetContent,
+            status: "pending", // Important: Pending
+            source: "timeline", // Generated for timeline
+            isAiGenerated: true,
+            aiModel: "apifreellm-free",
+            niche: topic.niche,
+            subcategory: topic.subcategory,
+            aiPrompt: prompt,
+        });
+
+        // 6. Notify User (Draft ready)
+        await ctx.runMutation(api.pushNotifications.createNotification, {
+            title: "📝 New Tweet Draft Ready",
+            body: `A new draft about ${topic.subcategory} is waiting for review or auto-posting.`,
+            type: "info",
+            data: { url: "/feed?filter=pending" },
+        });
+
+        // Push Notification
+        try {
+            await ctx.runAction(api.pushNotifications.sendPushNotification, {
+                title: "New Draft ready! 📝",
+                body: `Draft about ${topic.subcategory} generated.`,
+                type: "info",
+                data: { url: "/feed?filter=pending" },
+                skipDbRecord: true,
+            });
+        } catch (err) {
+            console.log("Push failed", err);
+        }
+
+    },
+});
+
+/**
+ * 2. Post Pending Tweet Action (Runs every 2 hours)
+ * - Finds oldest "pending" tweet
+ * - Posts to Twitter API
+ * - Updates status to "posted"
+ */
+export const postPendingTweet = internalAction({
+    args: {},
+    handler: async (ctx) => {
+        // 1. Get Oldest Pending Tweet
+        const tweetToPost = await ctx.runQuery(api.tweets.getOldestPendingTweet);
+
+        if (!tweetToPost) {
+            console.log("No pending tweets found to post.");
+            return;
+        }
+
+        console.log(`Attempting to post tweet ${tweetToPost._id}...`);
 
         try {
-            const response = await fetch(API_URL, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ message: prompt }),
+            // 2. Post to Twitter
+            // Using the same client as ComposeTweet
+            const { twitterClient } = await import("../lib/twitter-client");
+
+            // Check content length safety (though usually AI manages it, good to double check)
+            if (tweetToPost.text.length > 280) {
+                console.warn(`Tweet ${tweetToPost._id} is too long (${tweetToPost.text.length}), skipping.`);
+                // Mark as failed so we don't get stuck on it
+                await ctx.runMutation(api.tweets.updateTweetStatus, {
+                    id: tweetToPost._id,
+                    status: "failed",
+                    errorMessage: "Tweet exceeds 280 characters",
+                });
+                return;
+            }
+
+            const twitterResponse = await twitterClient.v2.tweet(tweetToPost.text);
+            const tweetId = twitterResponse.data.id;
+
+            console.log("Successfully posted to Twitter:", tweetId);
+
+            // 3. Update Status to Posted
+            await ctx.runMutation(api.tweets.updateTweetStatus, {
+                id: tweetToPost._id,
+                status: "posted",
+                tweetId: tweetId, // Save the X ID
             });
 
-            if (!response.ok) {
-                console.error(`APIFreeLLM API returned status ${response.status}`);
-                const errorText = await response.text();
-                console.error("Response body:", errorText);
-                return;
-            }
+            // 4. Notify User
+            await ctx.runMutation(api.pushNotifications.createNotification, {
+                title: "🚀 Auto-tweet Posted!",
+                body: `Your queued tweet was sent to X: "${tweetToPost.text.substring(0, 40)}..."`,
+                type: "success",
+                data: { url: "/feed" }
+            });
 
-            const data = await response.json();
-
-            if (data.error) {
-                console.error("APIFreeLLM Error:", data.error);
-                return;
-            }
-
-            const tweetContent = data.response;
-
-            if (!tweetContent) {
-                console.error("No content in response", data);
-                return;
-            }
-
-            // 5. Post directly to Twitter
+            // Push Notification
             try {
-                // Import strictly inside the action to avoid build issues in non-node environments (though this is internalAction)
-                const { twitterClient } = await import("../lib/twitter-client");
-
-                console.log("Attempting to post to Twitter...");
-                const twitterResponse = await twitterClient.v2.tweet(tweetContent);
-                const tweetId = twitterResponse.data.id;
-
-                console.log("Successfully posted to Twitter:", tweetId);
-
-                // 6. Save to DB (Status: Posted)
-                await ctx.runMutation(api.tweets.addTweet, {
-                    text: tweetContent,
-                    status: "posted",
-                    tweetId: tweetId,
-                    source: "compose",
-                    isAiGenerated: true,
-                    aiModel: "apifreellm-free",
-                    niche: topic.niche,
-                    subcategory: topic.subcategory,
-                    aiPrompt: prompt,
-                });
-
-                // 7. Notify User with database notification (reliable)
-                await ctx.runMutation(api.pushNotifications.createNotification, {
-                    title: "✨ Auto-tweet Posted!",
-                    body: `Posted to X: "${tweetContent.substring(0, 50)}..."`,
+                await ctx.runAction(api.pushNotifications.sendPushNotification, {
+                    title: "Tweet Posted! 🚀",
+                    body: `Sent to X: ${tweetToPost.text.substring(0, 40)}...`,
                     type: "success",
-                    data: { url: "/feed" }
+                    data: { url: "/feed" },
+                    skipDbRecord: true,
                 });
-
-                // Also try push notification (best effort, may fail on Vercel)
-                try {
-                    await ctx.runAction(api.pushNotifications.sendPushNotification, {
-                        title: "Tweet Posted Automatically!",
-                        body: `Posted: ${tweetContent.substring(0, 50)}...`,
-                        type: "success",
-                        data: { url: "/feed" }
-                    });
-                } catch (pushErr) {
-                    console.log("Push notification failed (non-critical):", pushErr);
-                    // Continue - database notification was already created
-                }
-
-            } catch (twitterError: any) {
-                console.error("Failed to post to Twitter:", twitterError);
-
-                // Save as failed/pending for manual review
-                await ctx.runMutation(api.tweets.addTweet, {
-                    text: tweetContent,
-                    status: "failed",
-                    source: "compose",
-                    errorMessage: twitterError.message || "Auto-posting failed",
-                    isAiGenerated: true,
-                    aiModel: "apifreellm-free",
-                    niche: topic.niche,
-                    subcategory: topic.subcategory,
-                    aiPrompt: prompt,
-                });
-
-                // Notify User of failure with database notification (reliable)
-                await ctx.runMutation(api.pushNotifications.createNotification, {
-                    title: "❌ Auto-tweet Failed",
-                    body: `Couldn't post: "${tweetContent.substring(0, 50)}..." (${twitterError.message || "Unknown error"})`,
-                    type: "error",
-                    data: { url: "/notifications" }
-                });
-
-                // Also try push notification (best effort, may fail on Vercel)
-                try {
-                    await ctx.runAction(api.pushNotifications.sendPushNotification, {
-                        title: "Auto-tweet Failed",
-                        body: `Failed to post: ${tweetContent.substring(0, 50)}... (${twitterError.message || "Unknown error"})`,
-                        type: "error",
-                        data: { url: "/feed" }
-                    });
-                } catch (pushErr) {
-                    console.log("Push notification failed (non-critical):", pushErr);
-                    // Continue - database notification was already created
-                }
+            } catch (err) {
+                console.log("Push failed", err);
             }
 
-        } catch (error) {
-            console.error("Error generating tweet:", error);
+
+        } catch (error: any) {
+            console.error(`Failed to post tweet ${tweetToPost._id}:`, error);
+
+            let errorMessage = error.message || "Auto-posting failed";
+            // Check for duplicate content error from Twitter
+            if (error?.code === 403 && error?.data?.detail?.includes("duplicate content")) {
+                console.warn("Twitter rejected duplicate content. Marking as failed.");
+                errorMessage = "Duplicate Content (Twitter rejected)";
+            }
+
+            // Update status to failed so we retry later or user fixes it
+            await ctx.runMutation(api.tweets.updateTweetStatus, {
+                id: tweetToPost._id,
+                status: "failed",
+                errorMessage: errorMessage,
+            });
+
+            // Notification for failure
+            await ctx.runMutation(api.pushNotifications.createNotification, {
+                title: "❌ Post Failed",
+                body: `Could not auto-post tweet: ${errorMessage}`,
+                type: "error",
+                data: { url: "/feed?filter=failed" }
+            });
         }
     },
 });

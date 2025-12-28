@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { Twitter, Home, Search as SearchIcon, Bell } from 'lucide-react';
+import { Twitter, Home, Search as SearchIcon, Bell, Settings } from 'lucide-react';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { useTheme } from '@/lib/theme-context';
 import { useQuery } from 'convex/react';
@@ -10,7 +10,7 @@ import { api } from '@/convex/_generated/api';
 
 interface HeaderProps {
   showNavigation?: boolean;
-  currentPage?: 'home' | 'feed' | 'search' | 'notifications';
+  currentPage?: 'home' | 'feed' | 'search' | 'notifications' | 'settings';
 }
 
 export function Header({ showNavigation = true, currentPage }: HeaderProps) {
@@ -77,6 +77,15 @@ export function Header({ showNavigation = true, currentPage }: HeaderProps) {
                       {unreadCount > 9 ? '9+' : unreadCount}
                     </span>
                   )}
+                </Link>
+                <Link
+                  href="/settings"
+                  className={`p-2 rounded-full transition-colors ${currentPage === 'settings'
+                    ? 'bg-twitter-blue text-white'
+                    : 'hover:bg-muted/20'
+                    }`}
+                >
+                  <Settings className="w-5 h-5" />
                 </Link>
               </nav>
             )}

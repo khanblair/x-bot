@@ -9,7 +9,7 @@ import { ComposeTweet } from '@/components/ComposeTweet';
 interface PageLayoutProps {
   children: ReactNode;
   showNavigation?: boolean;
-  currentPage?: 'home' | 'feed' | 'search' | 'notifications';
+  currentPage?: 'home' | 'feed' | 'search' | 'notifications' | 'settings';
   showComposeFAB?: boolean;
   showFooter?: boolean;
   className?: string;

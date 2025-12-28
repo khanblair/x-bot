@@ -219,17 +219,20 @@ export const sendPushNotification = action({
             v.literal("success"),
             v.literal("error")
         ),
+        skipDbRecord: v.optional(v.boolean()),
     },
     handler: async (ctx, args) => {
-        // Create notification record first
-        await ctx.runMutation(api.pushNotifications.createNotification, {
-            title: args.title,
-            body: args.body,
-            icon: args.icon,
-            badge: args.badge,
-            data: args.data,
-            type: args.type,
-        });
+        // Create notification record first (unless skipped)
+        if (!args.skipDbRecord) {
+            await ctx.runMutation(api.pushNotifications.createNotification, {
+                title: args.title,
+                body: args.body,
+                icon: args.icon,
+                badge: args.badge,
+                data: args.data,
+                type: args.type,
+            });
+        }
 
         // Determine the correct URL based on environment
         // Try production URL first, fallback to local

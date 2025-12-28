@@ -34,30 +34,37 @@ export async function POST(request: Request) {
         }
 
         try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s timeout
+
             const apiResponse = await fetch(API_URL, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
+                    "Accept": "application/json",
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
                 },
                 body: JSON.stringify({
                     message: prompt
                 }),
+                signal: controller.signal,
             });
+            clearTimeout(timeoutId);
 
             if (!apiResponse.ok) {
                 console.error(`APIFreeLLM API error: ${apiResponse.status} ${apiResponse.statusText}`);
-                const errorData = await apiResponse.json().catch(() => ({}));
-                console.error("APIFreeLLM error response:", errorData);
-                throw new Error(errorData.error || `APIFreeLLM request failed with status ${apiResponse.status}`);
+                const errorText = await apiResponse.text();
+                console.error("APIFreeLLM error body:", errorText.substring(0, 500));
+                throw new Error(`APIFreeLLM request failed with status ${apiResponse.status}: ${errorText.substring(0, 200)}`);
             }
 
             const data = await apiResponse.json();
-            
+
             if (!data.response) {
                 console.error("APIFreeLLM returned no response content:", data);
                 throw new Error("APIFreeLLM returned empty response");
             }
-            
+
             tweetText = data.response;
             promptUsed = prompt;
 

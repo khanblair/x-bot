@@ -10,6 +10,7 @@
 
 import type * as crons from "../crons.js";
 import type * as generate from "../generate.js";
+import type * as hashtags from "../hashtags.js";
 import type * as pushNotifications from "../pushNotifications.js";
 import type * as rateLimits from "../rateLimits.js";
 import type * as tweets from "../tweets.js";
@@ -23,6 +24,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   crons: typeof crons;
   generate: typeof generate;
+  hashtags: typeof hashtags;
   pushNotifications: typeof pushNotifications;
   rateLimits: typeof rateLimits;
   tweets: typeof tweets;

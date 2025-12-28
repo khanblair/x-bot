@@ -1,44 +1,44 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Clock, Bot } from 'lucide-react';
+import { Clock, Bot, FileText } from 'lucide-react';
 import { GlassCard } from './GlassCard';
 
 export function AutoTweetTimer() {
-  const [timeRemaining, setTimeRemaining] = useState<{ hours: number; minutes: number; seconds: number }>({
-    hours: 0,
-    minutes: 0,
-    seconds: 0,
-  });
+  const [postTime, setPostTime] = useState({ hours: 0, minutes: 0, seconds: 0 });
+  const [draftTime, setDraftTime] = useState({ minutes: 0, seconds: 0 });
   const [isExpanded, setIsExpanded] = useState(false);
 
   useEffect(() => {
-    const calculateTimeRemaining = () => {
+    const calculateTime = () => {
       const now = new Date();
       const currentHour = now.getHours();
       const currentMinute = now.getMinutes();
       const currentSecond = now.getSeconds();
 
-      // Calculate minutes since last 2-hour interval
-      const minutesSinceLastRun = (currentHour % 2) * 60 + currentMinute;
-      const minutesUntilNextRun = 120 - minutesSinceLastRun;
+      // --- 2-Hour Post Timer ---
+      const minutesSinceLastPost = (currentHour % 2) * 60 + currentMinute;
+      const minutesUntilPost = 120 - minutesSinceLastPost;
+      const adjustedPostMinutes = minutesUntilPost === 0 ? 120 : minutesUntilPost;
 
-      // If it's exactly at the interval, show 2 hours
-      const adjustedMinutes = minutesUntilNextRun === 0 ? 120 : minutesUntilNextRun;
+      setPostTime({
+        hours: Math.floor(adjustedPostMinutes / 60),
+        minutes: adjustedPostMinutes % 60,
+        seconds: 59 - currentSecond,
+      });
 
-      const hours = Math.floor(adjustedMinutes / 60);
-      const minutes = adjustedMinutes % 60;
-      const seconds = 59 - currentSecond; // Count down to next minute
+      // --- 30-Minute Draft Timer ---
+      const minutesSinceLastDraft = currentMinute % 30;
+      const minutesUntilDraft = 30 - minutesSinceLastDraft;
 
-      setTimeRemaining({ hours, minutes, seconds });
+      setDraftTime({
+        minutes: minutesUntilDraft === 30 ? 30 : minutesUntilDraft - 1, // -1 because we track seconds separately
+        seconds: 59 - currentSecond,
+      });
     };
 
-    // Calculate immediately
-    calculateTimeRemaining();
-
-    // Update every second
-    const interval = setInterval(calculateTimeRemaining, 1000);
-
+    calculateTime();
+    const interval = setInterval(calculateTime, 1000);
     return () => clearInterval(interval);
   }, []);
 
@@ -50,21 +50,34 @@ export function AutoTweetTimer() {
         {/* Expanded Timer Display */}
         {isExpanded && (
           <div className="absolute bottom-16 right-0 mb-2">
-            <GlassCard className="p-3 md:p-4 min-w-[160px] md:min-w-[180px] lg:min-w-[200px] shadow-lg transition-all duration-300">
-              <div className="flex items-center gap-2 mb-2">
-                <Bot className="w-3 h-3 md:w-4 md:h-4 text-purple-500" />
-                <span className="text-xs md:text-sm font-medium">Next Auto-Tweet</span>
-              </div>
-              <div className="text-center">
-                <div className="text-lg md:text-xl lg:text-2xl font-mono font-bold text-purple-600 dark:text-purple-400">
-                  {formatTime(timeRemaining.hours)}:{formatTime(timeRemaining.minutes)}:{formatTime(timeRemaining.seconds)}
+            <GlassCard className="p-3 md:p-4 min-w-[200px] md:min-w-[240px] shadow-lg transition-all duration-300">
+
+              {/* Post Timer */}
+              <div className="mb-4 pb-3 border-b border-muted/20">
+                <div className="flex items-center gap-2 mb-1">
+                  <Bot className="w-3 h-3 md:w-4 md:h-4 text-purple-500" />
+                  <span className="text-xs md:text-sm font-medium">Next Auto-Post</span>
                 </div>
-                <div className="text-[10px] md:text-xs text-muted mt-1">
-                  {timeRemaining.hours > 0 ? `${timeRemaining.hours}h ${timeRemaining.minutes}m` : `${timeRemaining.minutes}m ${timeRemaining.seconds}s`} remaining
+                <div className="flex items-baseline justify-between">
+                  <div className="text-lg md:text-xl font-mono font-bold text-purple-600 dark:text-purple-400">
+                    {formatTime(postTime.hours)}:{formatTime(postTime.minutes)}:{formatTime(postTime.seconds)}
+                  </div>
+                  <span className="text-[10px] md:text-xs text-muted">2h cycle</span>
                 </div>
               </div>
-              <div className="mt-2 text-[10px] md:text-xs text-muted text-center">
-                Runs every 2 hours
+
+              {/* Draft Timer */}
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <FileText className="w-3 h-3 md:w-4 md:h-4 text-blue-500" />
+                  <span className="text-xs md:text-sm font-medium">Next Draft Gen</span>
+                </div>
+                <div className="flex items-baseline justify-between">
+                  <div className="text-lg md:text-xl font-mono font-bold text-blue-600 dark:text-blue-400">
+                    00:{formatTime(draftTime.minutes)}:{formatTime(draftTime.seconds)}
+                  </div>
+                  <span className="text-[10px] md:text-xs text-muted">30m cycle</span>
+                </div>
               </div>
             </GlassCard>
           </div>
@@ -77,14 +90,15 @@ export function AutoTweetTimer() {
           aria-label="Auto-tweet timer"
         >
           <Clock className="w-6 h-6 md:w-7 md:h-7 text-white group-hover:text-purple-100 transition-colors" />
-          {/* Show countdown on button when collapsed */}
+
+          {/* Badge shows Post Hours (if > 0) or Post Minutes */}
           <div className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] md:text-xs rounded-full w-5 h-5 md:w-6 md:h-6 flex items-center justify-center font-bold">
-            {timeRemaining.hours > 0 ? timeRemaining.hours : timeRemaining.minutes}
+            {postTime.hours > 0 ? postTime.hours : postTime.minutes}
           </div>
         </button>
 
-        {/* Pulse Animation when close to time */}
-        {timeRemaining.hours === 0 && timeRemaining.minutes <= 30 && (
+        {/* Pulse Animation when close to Post time */}
+        {postTime.hours === 0 && postTime.minutes <= 10 && (
           <div className="absolute inset-0 rounded-full bg-purple-500/20 animate-ping" />
         )}
       </div>

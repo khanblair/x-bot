@@ -7,7 +7,7 @@ import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { GlassCard } from '@/components/GlassCard';
 import { RateLimitIndicator } from '@/components/RateLimitIndicator';
 import { PageLayout } from '@/components/PageLayout';
-import { Twitter, Search as SearchIcon, TrendingUp, Filter, X, CheckCircle2, XCircle, Clock, Heart, MessageCircle, Repeat2 } from 'lucide-react';
+import { Twitter, Search as SearchIcon, TrendingUp, Filter, X, CheckCircle2, XCircle, Clock, Heart, MessageCircle, Repeat2, Sparkles } from 'lucide-react';
 
 export default function FeedPage() {
   const [searchFilter, setSearchFilter] = useState('');
@@ -36,8 +36,17 @@ export default function FeedPage() {
 
   const isLoading = allPosts === undefined;
 
-  const getStatusBadge = (status?: string) => {
+  const getStatusBadge = (status?: string, isAiGenerated?: boolean) => {
     if (!status) return null;
+
+    if (status === 'pending' && isAiGenerated) {
+      return (
+        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-purple-500/20 text-purple-700 dark:text-purple-300 border border-purple-500/30">
+          <Sparkles className="w-3 h-3" />
+          AI Draft
+        </span>
+      );
+    }
 
     const badges = {
       posted: { icon: CheckCircle2, text: 'Posted', color: 'bg-green-500/20 text-green-700 dark:text-green-300' },
@@ -133,8 +142,8 @@ export default function FeedPage() {
                           type="button"
                           onClick={() => setSortBy(option.value)}
                           className={`px-3 py-2 rounded-full text-sm font-medium transition-all flex items-center justify-center gap-2 ${sortBy === option.value
-                              ? 'bg-twitter-blue text-white'
-                              : 'glass-card hover:scale-105'
+                            ? 'bg-twitter-blue text-white'
+                            : 'glass-card hover:scale-105'
                             }`}
                         >
                           <Icon className="w-4 h-4" />
@@ -163,8 +172,8 @@ export default function FeedPage() {
                         type="button"
                         onClick={() => setStatusFilter(option.value)}
                         className={`px-3 py-2 rounded-full text-sm font-medium transition-all ${statusFilter === option.value
-                            ? 'bg-twitter-blue text-white'
-                            : 'glass-card hover:scale-105'
+                          ? 'bg-twitter-blue text-white'
+                          : 'glass-card hover:scale-105'
                           }`}
                       >
                         {option.label} ({option.count})
@@ -202,7 +211,7 @@ export default function FeedPage() {
                           <div className="flex items-center gap-2">
                             <span className="font-bold">{tweet.authorName || 'You'}</span>
                             <span className="text-muted text-sm">@{tweet.authorUsername || 'user'}</span>
-                            {getStatusBadge(tweet.status)}
+                            {getStatusBadge(tweet.status, tweet.isAiGenerated)}
                           </div>
                           <span className="text-xs text-muted">
                             {new Date(tweet.createdAt).toLocaleString()}

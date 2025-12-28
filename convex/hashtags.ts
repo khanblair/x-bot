@@ -1,6 +1,4 @@
 // Hashtag database organized by niche and subcategory - Complete coverage for all 12 niches
-
-// Hashtag database organized by niche and subcategory - Complete coverage for all 12 niches
 export const HASHTAG_DATABASE = {
     technology: {
         'AI & Machine Learning': ['#AI', '#MachineLearning', '#DeepLearning', '#ArtificialIntelligence', '#ML', '#DataScience', '#NeuralNetworks', '#AITech'],
@@ -146,68 +144,4 @@ export const HASHTAG_DATABASE = {
         'Design Trends': ['#DesignTrends', '#TrendingDesign', '#DesignInspiration', '#ModernDesign', '#DesignIdeas', '#DesignCommunity'],
         'Art History': ['#ArtHistory', '#HistoryOfArt', '#ClassicArt', '#ArtEducation', '#ArtMovement', '#ArtisticHeritage', '#ArtScholar'],
     },
-};
-
-// Get relevant hashtags for a niche and subcategory
-export const getRelevantHashtags = (niche: string, subcategory: string): string[] => {
-    const nicheData = HASHTAG_DATABASE[niche as keyof typeof HASHTAG_DATABASE];
-    if (!nicheData) return [];
-
-    const subcategoryHashtags = nicheData[subcategory as keyof typeof nicheData];
-    return subcategoryHashtags || [];
-};
-
-// Select best hashtags (2-3) based on context
-export const selectBestHashtags = (
-    niche: string,
-    subcategory: string,
-    tweetText: string
-): string[] => {
-    const availableHashtags = getRelevantHashtags(niche, subcategory);
-    if (availableHashtags.length === 0) return [];
-
-    // Simple scoring: prefer hashtags that match words in the tweet
-    const tweetLower = tweetText.toLowerCase();
-    const scored = availableHashtags.map(tag => {
-        const tagWord = tag.replace('#', '').toLowerCase();
-        const score = tweetLower.includes(tagWord) ? 2 : 1;
-        return { tag, score };
-    });
-
-    // Sort by score and take top 2-3
-    scored.sort((a, b) => b.score - a.score);
-    return scored.slice(0, 2).map(s => s.tag);
-};
-
-// Add hashtags to tweet if not already present
-export const addHashtagsToTweet = (
-    tweetText: string,
-    niche: string,
-    subcategory: string
-): string => {
-    // Check if tweet already has hashtags
-    const hasHashtags = tweetText.includes('#');
-    if (hasHashtags) return tweetText;
-
-    // Get best hashtags
-    const hashtags = selectBestHashtags(niche, subcategory, tweetText);
-    if (hashtags.length === 0) return tweetText;
-
-    // Add hashtags at the end
-    const hashtagString = hashtags.join(' ');
-    const combined = `${tweetText} ${hashtagString}`;
-
-    // Ensure it fits in 280 characters
-    if (combined.length <= 280) {
-        return combined;
-    }
-
-    // If too long, try with just one hashtag
-    const singleHashtag = `${tweetText} ${hashtags[0]}`;
-    if (singleHashtag.length <= 280) {
-        return singleHashtag;
-    }
-
-    // If still too long, return original
-    return tweetText;
 };

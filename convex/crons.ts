@@ -17,11 +17,18 @@ crons.daily(
     api.pushNotifications.cleanupOldNotifications
 );
 
-// Generate tweet every 2 hours
+// Generate a draft tweet every 30 minutes
 crons.interval(
-    "generate-tweet",
+    "generate-draft",
+    { minutes: 30 },
+    internal.generate.generateDraft
+);
+
+// Post pending tweet every 2 hours
+crons.interval(
+    "post-pending-tweet",
     { hours: 2 },
-    internal.generate.generateTweet
+    internal.generate.postPendingTweet
 );
 
 export default crons;

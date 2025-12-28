@@ -114,6 +114,17 @@ export const getTweetsByStatus = query({
   },
 });
 
+// Get oldest pending tweet (FIFO queue for auto-posting)
+export const getOldestPendingTweet = query({
+  handler: async (ctx) => {
+    return await ctx.db
+      .query("tweets")
+      .withIndex("by_status", (q) => q.eq("status", "pending"))
+      .order("asc") // Oldest first
+      .first();
+  },
+});
+
 // Search tweets by text
 export const searchTweets = query({
   args: {
@@ -182,5 +193,32 @@ export const getRecentTweets = query({
       .query("tweets")
       .order("desc") // Newest first
       .take(args.limit ?? 50);
+  },
+});
+
+// Get timestamps for last schedule events
+export const getScheduleTimestamps = query({
+  handler: async (ctx) => {
+    // Last posted tweet
+    const lastPosted = await ctx.db
+      .query("tweets")
+      .withIndex("by_status", (q) => q.eq("status", "posted"))
+      .order("desc")
+      .first();
+
+    // Last generated draft (status=pending, isAiGenerated=true)
+    // Note: Schema might not have index for this specific combo, so we filter.
+    // Optimization: query by pending status, assume recent ones are drafts
+    const lastDraft = await ctx.db
+      .query("tweets")
+      .withIndex("by_status", (q) => q.eq("status", "pending"))
+      .order("desc")
+      .filter((q) => q.eq(q.field("isAiGenerated"), true))
+      .first();
+
+    return {
+      lastPostedAt: lastPosted?.postedAt ?? lastPosted?.createdAt,
+      lastDraftedAt: lastDraft?.createdAt,
+    };
   },
 });

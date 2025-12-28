@@ -14,7 +14,7 @@ export default function Home() {
           {/* Animated Icon */}
           <div className="animate-float">
             <div className="w-32 h-32 rounded-full bg-gradient-to-br from-twitter-blue via-purple-500 to-pink-500 flex items-center justify-center shadow-2xl">
-              <Twitter className="w-16 h-16 text-white" />
+              <img src="/icons8-x-60-white.png" alt="X Logo" className="w-20 h-20 object-contain" />
             </div>
           </div>
 
@@ -171,6 +171,16 @@ export default function Home() {
               </GlassCard>
 
 
+
+              <GlassCard className="p-6 space-y-3">
+                <div className="w-12 h-12 rounded-full bg-purple-500/20 flex items-center justify-center">
+                  <Sparkles className="w-6 h-6 text-magenta-500" />
+                </div>
+                <h4 className="text-lg font-bold">AI-Powered</h4>
+                <p className="text-sm text-muted">
+                  Advanced LLM technology for intelligent tweet generation
+                </p>
+              </GlassCard>
 
               <GlassCard className="p-6 space-y-3">
                 <div className="w-12 h-12 rounded-full bg-green-500/20 flex items-center justify-center">
