@@ -64,6 +64,7 @@ export default defineSchema({
     requestCount: v.number(), // Current request count
     limit: v.number(), // Maximum allowed requests
     resetTime: v.number(), // Timestamp when limit resets
+    lastRequestTime: v.number(), // Timestamp of last request (for per-request limits like APIFreeLLM)
     lastUpdated: v.number(), // Last update timestamp
   })
     .index("by_endpoint", ["endpoint"]),

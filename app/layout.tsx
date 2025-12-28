@@ -6,6 +6,7 @@ import { QueryProvider } from "@/lib/query-provider";
 import { ConvexProvider } from "@/lib/convex-provider";
 import { Toaster } from "react-hot-toast";
 import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
+import { AutoTweetTimer } from "@/components/AutoTweetTimer";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -110,6 +111,7 @@ export default function RootLayout({
               />
               {children}
               <PWAInstallPrompt />
+              <AutoTweetTimer />
             </QueryProvider>
           </ConvexProvider>
         </ThemeProvider>

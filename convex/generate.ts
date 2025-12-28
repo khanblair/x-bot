@@ -72,6 +72,13 @@ export const generateTweet = internalAction({
                 body: JSON.stringify({ message: prompt }),
             });
 
+            if (!response.ok) {
+                console.error(`APIFreeLLM API returned status ${response.status}`);
+                const errorText = await response.text();
+                console.error("Response body:", errorText);
+                return;
+            }
+
             const data = await response.json();
 
             if (data.error) {
@@ -110,13 +117,26 @@ export const generateTweet = internalAction({
                     aiPrompt: prompt,
                 });
 
-                // 7. Notify User
-                await ctx.runAction(api.pushNotifications.sendPushNotification, {
-                    title: "Tweet Posted Automatically!",
-                    body: `Posted: ${tweetContent.substring(0, 50)}...`,
+                // 7. Notify User with database notification (reliable)
+                await ctx.runMutation(api.pushNotifications.createNotification, {
+                    title: "✨ Auto-tweet Posted!",
+                    body: `Posted to X: "${tweetContent.substring(0, 50)}..."`,
                     type: "success",
                     data: { url: "/feed" }
                 });
+
+                // Also try push notification (best effort, may fail on Vercel)
+                try {
+                    await ctx.runAction(api.pushNotifications.sendPushNotification, {
+                        title: "Tweet Posted Automatically!",
+                        body: `Posted: ${tweetContent.substring(0, 50)}...`,
+                        type: "success",
+                        data: { url: "/feed" }
+                    });
+                } catch (pushErr) {
+                    console.log("Push notification failed (non-critical):", pushErr);
+                    // Continue - database notification was already created
+                }
 
             } catch (twitterError: any) {
                 console.error("Failed to post to Twitter:", twitterError);
@@ -133,6 +153,27 @@ export const generateTweet = internalAction({
                     subcategory: topic.subcategory,
                     aiPrompt: prompt,
                 });
+
+                // Notify User of failure with database notification (reliable)
+                await ctx.runMutation(api.pushNotifications.createNotification, {
+                    title: "❌ Auto-tweet Failed",
+                    body: `Couldn't post: "${tweetContent.substring(0, 50)}..." (${twitterError.message || "Unknown error"})`,
+                    type: "error",
+                    data: { url: "/notifications" }
+                });
+
+                // Also try push notification (best effort, may fail on Vercel)
+                try {
+                    await ctx.runAction(api.pushNotifications.sendPushNotification, {
+                        title: "Auto-tweet Failed",
+                        body: `Failed to post: ${tweetContent.substring(0, 50)}... (${twitterError.message || "Unknown error"})`,
+                        type: "error",
+                        data: { url: "/feed" }
+                    });
+                } catch (pushErr) {
+                    console.log("Push notification failed (non-critical):", pushErr);
+                    // Continue - database notification was already created
+                }
             }
 
         } catch (error) {

@@ -11,8 +11,8 @@ export const getRateLimits = query({
 
         // Define static limits for reference/fallback
         const limitsConfig: Record<string, { limit: number; window: number }> = {
-            "generate-tweet": { limit: 15, window: 60000 },
-            "apifreellm-generate": { limit: 1, window: 5000 },
+            "generate-tweet": { limit: 15, window: 60000 }, // 15 per minute (auto-generation)
+            "apifreellm-generate": { limit: 1, window: 5000 }, // 1 per 5 seconds (user-triggered AI)
         };
         const config = limitsConfig[endpoint] || limitsConfig["apifreellm-generate"];
 
@@ -58,8 +58,8 @@ export const updateRateLimit = mutation({
     handler: async (ctx, args) => {
         // Define limits configuration again to be safe
         const limitsConfig: Record<string, { limit: number; window: number }> = {
-            "generate-tweet": { limit: 15, window: 60000 },
-            "apifreellm-generate": { limit: 1, window: 5000 },
+            "generate-tweet": { limit: 15, window: 60000 }, // 15 per minute (auto-generation)
+            "apifreellm-generate": { limit: 1, window: 5000 }, // 1 per 5 seconds (user-triggered AI)
         };
         const config = limitsConfig[args.endpoint] || limitsConfig["apifreellm-generate"];
 
@@ -71,18 +71,43 @@ export const updateRateLimit = mutation({
         const now = Date.now();
 
         if (!existing) {
-            // Create new rate limit entry
+            // Create new rate limit entry - record the current request time
             await ctx.db.insert("rateLimits", {
                 endpoint: args.endpoint,
                 requestCount: 1,
                 limit: config.limit,
-                resetTime: now + config.window,
+                lastRequestTime: now, // Track when the last request was made
+                resetTime: now + config.window, // Still keep resetTime for other endpoints
                 lastUpdated: now,
             });
             return { success: true, remaining: config.limit - 1 };
         }
 
-        // Check if we need to reset
+        // For APIFreeLLM (1 request per 5 seconds): check if 5 seconds have passed since last request
+        if (args.endpoint === "apifreellm-generate") {
+            const timeSinceLastRequest = now - existing.lastRequestTime;
+            const FIVE_SECONDS = 5000;
+            
+            if (timeSinceLastRequest < FIVE_SECONDS) {
+                const waitMs = FIVE_SECONDS - timeSinceLastRequest;
+                const waitSeconds = Math.ceil(waitMs / 1000);
+                return {
+                    success: false,
+                    error: `Rate limit exceeded. Please wait ${waitSeconds}s.`,
+                    resetTime: now + waitMs,
+                    remaining: 0,
+                };
+            }
+            
+            // 5 seconds have passed, allow the request
+            await ctx.db.patch(existing._id, {
+                lastRequestTime: now,
+                lastUpdated: now,
+            });
+            return { success: true, remaining: 1 }; // Always 1 remaining for per-5sec limit
+        }
+
+        // For other endpoints, use window-based counting
         if (now >= existing.resetTime) {
             await ctx.db.patch(existing._id, {
                 requestCount: 1,
@@ -128,17 +153,10 @@ export const resetRateLimit = mutation({
             .withIndex("by_endpoint", (q) => q.eq("endpoint", args.endpoint))
             .first();
 
-        // Get config to set correct reset time
-        const limitsConfig: Record<string, { limit: number; window: number }> = {
-            "generate-tweet": { limit: 15, window: 60000 },
-            "apifreellm-generate": { limit: 1, window: 5000 },
-        };
-        const config = limitsConfig[args.endpoint] || limitsConfig["apifreellm-generate"];
-
         if (existing) {
             await ctx.db.patch(existing._id, {
                 requestCount: 0,
-                resetTime: Date.now() + config.window,
+                lastRequestTime: 0, // Reset so next request is allowed immediately
                 lastUpdated: Date.now(),
             });
         }

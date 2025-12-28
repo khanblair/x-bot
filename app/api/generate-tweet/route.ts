@@ -28,6 +28,11 @@ export async function POST(request: Request) {
         // APIFreeLLM (Default/Only option)
         const API_URL = process.env.APIFREELLM_FREE_URL || "https://apifreellm.com/api/chat";
 
+        if (!API_URL) {
+            console.error("APIFREELLM_FREE_URL environment variable not set");
+            throw new Error("API configuration missing. Please contact support.");
+        }
+
         try {
             const apiResponse = await fetch(API_URL, {
                 method: "POST",
@@ -40,17 +45,27 @@ export async function POST(request: Request) {
             });
 
             if (!apiResponse.ok) {
+                console.error(`APIFreeLLM API error: ${apiResponse.status} ${apiResponse.statusText}`);
                 const errorData = await apiResponse.json().catch(() => ({}));
-                console.error("APIFreeLLM error:", errorData);
+                console.error("APIFreeLLM error response:", errorData);
                 throw new Error(errorData.error || `APIFreeLLM request failed with status ${apiResponse.status}`);
             }
 
             const data = await apiResponse.json();
-            tweetText = data.response; // Assuming basic format { response: "text" } based on previous usage
+            
+            if (!data.response) {
+                console.error("APIFreeLLM returned no response content:", data);
+                throw new Error("APIFreeLLM returned empty response");
+            }
+            
+            tweetText = data.response;
             promptUsed = prompt;
 
         } catch (error) {
             console.error("APIFreeLLM generation error:", error);
+            if (error instanceof Error) {
+                throw new Error(`Failed to generate tweet with APIFreeLLM: ${error.message}`);
+            }
             throw new Error("Failed to generate tweet with APIFreeLLM. Please try again later.");
         }
 
