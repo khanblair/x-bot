@@ -23,42 +23,35 @@ crons.daily(
 // Afternoon: 1 PM EST -> 18:00 UTC
 // Evening: 5 PM EST -> 22:00 UTC
 
-// 1. Morning Cycle
-crons.daily(
-    "generate-draft-morning",
-    { hourUTC: 13, minuteUTC: 0 }, // 8:00 AM EST
+// --- Draft Generation: Every 2 Hours (Odd Hours) ---
+// Runs at 1, 3, 5, ... 13, 15, ... 21, 23 UTC.
+// Avoids collision with Posting times (14, 18, 22 UTC).
+crons.cron(
+    "generate-draft-regular",
+    "0 1-23/2 * * *",
     internal.generate.generateDraft,
-    { type: "morning" }
+    {}
 );
+
+// --- Posting Schedule: 3 Posts Per Day ---
+// 1. Morning Post (9 AM EST -> 14:00 UTC)
 crons.daily(
     "post-tweet-morning",
-    { hourUTC: 14, minuteUTC: 0 }, // 9:00 AM EST
+    { hourUTC: 14, minuteUTC: 0 },
     internal.generate.postPendingTweet
 );
 
-// 2. Afternoon Cycle
-crons.daily(
-    "generate-draft-afternoon",
-    { hourUTC: 17, minuteUTC: 0 }, // 12:00 PM EST
-    internal.generate.generateDraft,
-    { type: "afternoon" }
-);
+// 2. Afternoon Post (1 PM EST -> 18:00 UTC)
 crons.daily(
     "post-tweet-afternoon",
-    { hourUTC: 18, minuteUTC: 0 }, // 1:00 PM EST
+    { hourUTC: 18, minuteUTC: 0 },
     internal.generate.postPendingTweet
 );
 
-// 3. Evening Cycle
-crons.daily(
-    "generate-draft-evening",
-    { hourUTC: 21, minuteUTC: 0 }, // 4:00 PM EST
-    internal.generate.generateDraft,
-    { type: "evening" }
-);
+// 3. Evening Post (5 PM EST -> 22:00 UTC)
 crons.daily(
     "post-tweet-evening",
-    { hourUTC: 22, minuteUTC: 0 }, // 5:00 PM EST
+    { hourUTC: 22, minuteUTC: 0 },
     internal.generate.postPendingTweet
 );
 

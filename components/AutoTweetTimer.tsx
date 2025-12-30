@@ -57,44 +57,30 @@ export function AutoTweetTimer() {
         seconds: secondsUntilPost % 60,
       });
 
-      // Draft is generated 1 hour before post
       // So time until draft = time until post - 1 hour (3600 seconds)
       // If time until post is < 1 hour, draft already happened (or is happening), so show 0 or wait for next cycle?
       // Actually, if we are within the hour before posting, the draft *should* exist.
       // Let's just say countdown to NEXT draft.
 
-      // Draft is generated 1 hour before post
-      // So time until draft = time until post - 1 hour (3600 seconds)
-      let msUntilDraft = msUntilPost - 3600 * 1000;
-
-      // If draft time for the upcoming post has already passed (we are in the 1h window before post),
-      // we should show the countdown to the START of the *next* cycle's draft.
-      if (msUntilDraft < 0) {
-        // Find the post *after* nextPost
-        let followingPost = null;
-        const currentNextPostHour = nextPost.getUTCHours();
-
-        for (const h of scheduleHoursUTC) {
-          const potentialPost = new Date(nextPost);
-          potentialPost.setUTCHours(h, 0, 0, 0);
-          // If this slot is later today than the current nextPost
-          if (potentialPost.getTime() > nextPost.getTime()) {
-            followingPost = potentialPost;
-            break;
-          }
+      // Draft Generation: Every 2 hours at odd hours (1, 3, 5, ..., 23)
+      const draftScheduleUTC = [1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23];
+      let nextDraft = null;
+      for (const h of draftScheduleUTC) {
+        const target = new Date(now);
+        target.setUTCHours(h, 0, 0, 0);
+        if (target.getTime() > now.getTime()) {
+          nextDraft = target;
+          break;
         }
-
-        if (!followingPost) {
-          // Wrap to tomorrow first slot
-          followingPost = new Date(nextPost);
-          followingPost.setUTCDate(nextPost.getUTCDate() + 1);
-          followingPost.setUTCHours(scheduleHoursUTC[0], 0, 0, 0);
-        }
-
-        // New draft target is 1 hour before this *following* post
-        msUntilDraft = (followingPost.getTime() - 3600 * 1000) - now.getTime();
       }
 
+      if (!nextDraft) {
+        nextDraft = new Date(now);
+        nextDraft.setUTCDate(now.getUTCDate() + 1);
+        nextDraft.setUTCHours(draftScheduleUTC[0], 0, 0, 0);
+      }
+
+      const msUntilDraft = nextDraft.getTime() - now.getTime();
       const secondsUntilDraft = Math.max(0, Math.floor(msUntilDraft / 1000));
 
       setDraftTime({

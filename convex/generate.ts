@@ -72,7 +72,18 @@ export const generateDraft = internalAction({
 
 
         // 4. Generate Content
-        const type = args.type || "morning"; // Default to morning if not provided
+        let type = args.type;
+
+        // If type not provided (running from regular cron), infer it based on time of day
+        // to keep the buffer balanced for the upcoming slots.
+        if (!type) {
+            const currentHour = new Date().getUTCHours();
+            // Morning Post is at 14 UTC. Afternoon at 18 UTC. Evening at 22 UTC.
+            if (currentHour < 14) type = "morning";
+            else if (currentHour < 18) type = "afternoon";
+            else type = "evening";
+        }
+
         let prompt = "";
 
         // Shared base rules to reduce repetition and rigidity
