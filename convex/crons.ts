@@ -17,17 +17,48 @@ crons.daily(
     api.pushNotifications.cleanupOldNotifications
 );
 
-// Generate a draft tweet every 30 minutes
-crons.interval(
-    "generate-draft",
-    { minutes: 30 },
-    internal.generate.generateDraft
+// --- Schedule: 3 Posts Per Day (Morning, Afternoon, Evening) ---
+// Times in UTC (User is UTC+3)
+// Morning: 9 AM UTC+3 -> 6:00 UTC
+// Afternoon: 2 PM UTC+3 -> 11:00 UTC
+// Evening: 7 PM UTC+3 -> 16:00 UTC
+
+// 1. Morning Cycle
+crons.daily(
+    "generate-draft-morning",
+    { hourUTC: 5, minuteUTC: 0 }, // 8:00 AM UTC+3
+    internal.generate.generateDraft,
+    { type: "morning" }
+);
+crons.daily(
+    "post-tweet-morning",
+    { hourUTC: 6, minuteUTC: 0 }, // 9:00 AM UTC+3
+    internal.generate.postPendingTweet
 );
 
-// Post pending tweet every 2 hours
-crons.interval(
-    "post-pending-tweet",
-    { hours: 2 },
+// 2. Afternoon Cycle
+crons.daily(
+    "generate-draft-afternoon",
+    { hourUTC: 10, minuteUTC: 0 }, // 1:00 PM UTC+3
+    internal.generate.generateDraft,
+    { type: "afternoon" }
+);
+crons.daily(
+    "post-tweet-afternoon",
+    { hourUTC: 11, minuteUTC: 0 }, // 2:00 PM UTC+3
+    internal.generate.postPendingTweet
+);
+
+// 3. Evening Cycle
+crons.daily(
+    "generate-draft-evening",
+    { hourUTC: 15, minuteUTC: 0 }, // 6:00 PM UTC+3
+    internal.generate.generateDraft,
+    { type: "evening" }
+);
+crons.daily(
+    "post-tweet-evening",
+    { hourUTC: 16, minuteUTC: 0 }, // 7:00 PM UTC+3
     internal.generate.postPendingTweet
 );
 

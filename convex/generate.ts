@@ -20,8 +20,8 @@ const PREDEFINED_TOPICS = Object.entries(HASHTAG_DATABASE).flatMap(([niche, subc
  * - Notifies user of new draft
  */
 export const generateDraft = internalAction({
-    args: {},
-    handler: async (ctx) => {
+    args: { type: v.optional(v.string()) },
+    handler: async (ctx, args) => {
         const API_URL = process.env.APIFREELLM_FREE_URL || "https://apifreellm.com/api/chat";
         const ENDPOINT_ID = "apifreellm-generate";
 
@@ -36,26 +36,29 @@ export const generateDraft = internalAction({
             return;
         }
 
-        // 2. Niche Balancing
-        const nicheCounts: Record<string, number> = {};
-        PREDEFINED_TOPICS.forEach(t => { nicheCounts[t.niche] = 0; });
+        // 2. Subcategory Balancing
+        // We want to rotate through subcategories evenly
+        const subcategoryCounts: Record<string, number> = {};
+        PREDEFINED_TOPICS.forEach(t => { subcategoryCounts[t.subcategory] = 0; });
 
+        // Count recent usage
         recentTweets.forEach(t => {
-            if (t.niche && nicheCounts[t.niche] !== undefined) {
-                nicheCounts[t.niche]++;
+            if (t.subcategory && subcategoryCounts[t.subcategory] !== undefined) {
+                subcategoryCounts[t.subcategory]++;
             }
         });
 
+        // Find least used
         let minCount = Infinity;
-        Object.values(nicheCounts).forEach(c => {
+        Object.values(subcategoryCounts).forEach(c => {
             if (c < minCount) minCount = c;
         });
 
-        const availableNiches = Object.keys(nicheCounts).filter(n => nicheCounts[n] === minCount);
-        const candidateTopics = PREDEFINED_TOPICS.filter(t => availableNiches.includes(t.niche));
+        // specific candidates
+        const candidateTopics = PREDEFINED_TOPICS.filter(t => subcategoryCounts[t.subcategory] === minCount);
         const topic = candidateTopics[Math.floor(Math.random() * candidateTopics.length)];
 
-        console.log(`Generating draft for: ${topic.niche} / ${topic.subcategory}`);
+        console.log(`Generating draft for: ${topic.niche} / ${topic.subcategory} (Usage count: ${minCount})`);
 
         // 3. Check Rate Limits
         const rateLimit = await ctx.runMutation(api.rateLimits.updateRateLimit, {
@@ -67,9 +70,60 @@ export const generateDraft = internalAction({
             return;
         }
 
+
         // 4. Generate Content
-        // Instructing AI to include hashtags
-        const prompt = `Write a short, engaging tweet about ${topic.subcategory} in the ${topic.niche} niche. Include 2-3 relevant hashtags. Do not include quotes.`;
+        const type = args.type || "morning"; // Default to morning if not provided
+        let prompt = "";
+
+        // Shared base rules to reduce repetition and rigidity
+        const baseRules = `
+        Rules:
+        1. **Length**: Aim for 100-150 characters for higher read-through and shares (max 280).
+        2. **Hashtags**: Include 1-3 targeted, trending hashtags from the ${topic.niche} niche (e.g., #AI or #FinTech). Research current trends to tie in.
+        3. **Emojis/Hooks**: Use 1-2 relevant emojis for scroll-stopping visual hooks (e.g., 👇, 🧵, 💡).
+        4. **Quotes**: Optional—use sparingly if they add credibility from experts.
+        5. **Trends & Variety**: Tie into current events, memes, or trending topics for timeliness. Vary phrasing to keep content fresh and diverse.
+        6. **Engagement**: End with a CTA like a question or poll to encourage replies/comments.
+        7. **Threads**: Suggest threading (🧵) for deeper value where it fits, especially for educational content.
+        `;
+
+        if (type === "morning") {
+            // Morning: Polls (Controversial/Trending)
+            prompt = `Write a viral, high-engagement **POLL-STYLE** tweet about ${topic.subcategory} in the ${topic.niche} niche.
+             
+             Specific Rules:
+             1. **Style**: Ask a controversial or trending question to spark debate.
+             2. **Format**: Write the tweet text that precedes a poll (e.g., "Which is better?"). Suggest 2-4 poll options.
+             3. **Goal**: Get people to vote, reply, or share.
+             
+             ${baseRules}
+             
+             Example: "AI agents are replacing remote workers fast. Is this progress or a disaster? 👇 #AI #FutureOfWork"`;
+        } else if (type === "afternoon") {
+            // Afternoon: Curiosity Gap / Question
+            prompt = `Write a viral, high-engagement **CURIOSITY-HOOK** tweet about ${topic.subcategory} in the ${topic.niche} niche.
+            
+            Specific Rules:
+            1. **Style**: Open loop / curiosity gap. Start with a counter-intuitive hook that makes them want more.
+            2. **Format**: Ask a question or share a surprising idea; hint at a thread (🧵) for depth.
+            3. **Goal**: Stop the scroll and drive thread reads.
+            
+            ${baseRules}
+            
+            Example: "Most think scaling SaaS takes years. I did it in 3 months with this AI hack... 🧵 #SaaS #AI"`;
+        } else {
+            // Evening: Educational / Hint
+            prompt = `Write a viral, high-engagement **EDUCATIONAL-HINT** tweet about ${topic.subcategory} in the ${topic.niche} niche.
+            
+            Specific Rules:
+            1. **Style**: Share a valuable tip, "did you know", or quick win with proof/data.
+            2. **Format**: Give upfront value but tease more (e.g., via thread 🧵 or reply).
+            3. **Goal**: Educate, build authority, and spark interactions.
+            
+            ${baseRules}
+            
+            Example: "Ditch console.log for debugging—use this tool to save 50% time. Proof in thread. 💡 #WebDev #DevTips"`;
+        }
 
         // Retry loop for API calls
         let tweetContent = "";
