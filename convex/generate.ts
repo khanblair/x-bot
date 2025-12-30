@@ -31,8 +31,8 @@ export const generateDraft = internalAction({
         const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000;
         const tweetsLast24h = recentTweets.filter(t => t.createdAt > oneDayAgo);
 
-        if (tweetsLast24h.length >= 15) {
-            console.log("Daily tweet generation limit (15) reached. Skipping draft generation.");
+        if (tweetsLast24h.length >= 6) {
+            console.log("Daily tweet generation limit (6) reached. Skipping draft generation.");
             return;
         }
 
@@ -78,7 +78,7 @@ export const generateDraft = internalAction({
         // Shared base rules to reduce repetition and rigidity
         const baseRules = `
         Rules:
-        1. **Length**: Aim for 100-150 characters for higher read-through and shares (max 280).
+        1. **Length**: STRICTLY between 100-150 characters. This is a hard requirement. Concise, punchy text only.
         2. **Hashtags**: Include 1-3 targeted, trending hashtags from the ${topic.niche} niche (e.g., #AI or #FinTech). Research current trends to tie in.
         3. **Emojis/Hooks**: Use 1-2 relevant emojis for scroll-stopping visual hooks (e.g., 👇, 🧵, 💡).
         4. **Quotes**: Optional—use sparingly if they add credibility from experts.
@@ -187,9 +187,25 @@ export const generateDraft = internalAction({
         });
 
         // 6. Notify User (Draft ready)
+        // 6. Notify User (Draft ready)
+        // Context-Aware Notification
+        let notifTitle = "New Draft ready! 📝";
+        let notifBody = `Draft about ${topic.subcategory} generated.`;
+
+        if (type === "morning") {
+            notifTitle = "Morning Poll Draft Ready! ☀️";
+            notifBody = `Review your poll about ${topic.subcategory}.`;
+        } else if (type === "afternoon") {
+            notifTitle = "Afternoon Hook Draft Ready! 🎣";
+            notifBody = `Review your hook about ${topic.subcategory}.`;
+        } else if (type === "evening") {
+            notifTitle = "Evening Value Draft Ready! 📚";
+            notifBody = `Review your educational post about ${topic.subcategory}.`;
+        }
+
         await ctx.runMutation(api.pushNotifications.createNotification, {
-            title: "📝 New Tweet Draft Ready",
-            body: `A new draft about ${topic.subcategory} is waiting for review or auto-posting.`,
+            title: notifTitle,
+            body: notifBody,
             type: "info",
             data: { url: "/feed?filter=pending" },
         });
@@ -197,8 +213,8 @@ export const generateDraft = internalAction({
         // Push Notification
         try {
             await ctx.runAction(api.pushNotifications.sendPushNotification, {
-                title: "New Draft ready! 📝",
-                body: `Draft about ${topic.subcategory} generated.`,
+                title: notifTitle,
+                body: notifBody,
                 type: "info",
                 data: { url: "/feed?filter=pending" },
                 skipDbRecord: true,
@@ -223,7 +239,40 @@ export const postPendingTweet = internalAction({
         const tweetToPost = await ctx.runQuery(api.tweets.getOldestPendingTweet);
 
         if (!tweetToPost) {
-            console.log("No pending tweets found to post.");
+            console.log("No pending tweets found. triggering immediate fallback generation...");
+
+            // Determine type based on current hour to maintain strategy consistency
+            // (Even though this is fallback, we try to match the slot)
+            const hour = new Date().getUTCHours();
+            let type = "morning";
+            if (hour >= 17) type = "evening"; // > 5 PM UTC (approx) - tough with EST. 
+            else if (hour >= 13) type = "afternoon"; // > 1 PM UTC
+
+            // Trigger generation
+            await ctx.runAction(internal.generate.generateDraft, { type });
+
+            // Verify and fetch the newly created tweet
+            // (Give DB a moment? No, mutations are consistent in Convex usually, but Action->Mutation might have delay? 
+            // Query should see it if mutation finished. `generateDraft` awaits the mutation. So we are good.)
+            const fallbackTweet = await ctx.runQuery(api.tweets.getOldestPendingTweet);
+
+            if (!fallbackTweet) {
+                console.error("Fallback generation failed or did not save in time.");
+                return;
+            }
+            // Proceed with this tweet
+            // We need to re-assign or reconstruct logic. 
+            // Let's recursively call ourselves? No, safer to just continue.
+            // But `tweetToPost` is const. Let's change it to let.
+            // Actually, I can't change const. 
+            // I'll wrap the posting logic in a helper or just reload the variable.
+
+            // Wait, I cannot reassign const.
+            // I will return `postPendingTweet` again?
+            // await ctx.runAction(internal.generate.postPendingTweet);
+            // return;
+            // This is cleanest.
+            await ctx.runAction(internal.generate.postPendingTweet);
             return;
         }
 
