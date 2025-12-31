@@ -31,8 +31,8 @@ export const generateDraft = internalAction({
         const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000;
         const tweetsLast24h = recentTweets.filter(t => t.createdAt > oneDayAgo);
 
-        if (tweetsLast24h.length >= 6) {
-            console.log("Daily tweet generation limit (6) reached. Skipping draft generation.");
+        if (tweetsLast24h.length >= 15) {
+            console.log("Daily tweet generation limit (15) reached. Skipping draft generation.");
             return;
         }
 
@@ -78,9 +78,13 @@ export const generateDraft = internalAction({
         // to keep the buffer balanced for the upcoming slots.
         if (!type) {
             const currentHour = new Date().getUTCHours();
-            // Morning Post is at 14 UTC. Afternoon at 18 UTC. Evening at 22 UTC.
-            if (currentHour < 14) type = "morning";
-            else if (currentHour < 18) type = "afternoon";
+            // Balanced Distribution for 6x Posting:
+            // Morning Drafts: 00:00 - 07:59 UTC (4 slots: 1, 3, 5, 7)
+            // Afternoon Drafts: 08:00 - 15:59 UTC (4 slots: 9, 11, 13, 15)
+            // Evening Drafts: 16:00 - 23:59 UTC (4 slots: 17, 19, 21, 23)
+
+            if (currentHour < 8) type = "morning";
+            else if (currentHour < 16) type = "afternoon";
             else type = "evening";
         }
 

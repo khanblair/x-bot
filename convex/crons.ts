@@ -33,25 +33,40 @@ crons.cron(
     {}
 );
 
-// --- Posting Schedule: 3 Posts Per Day ---
-// 1. Morning Post (9 AM EST -> 14:00 UTC)
+// --- Posting Schedule: 6 Posts Per Day (Double Header Strategy) ---
+// Morning: 9 AM & 10 AM EST (14:00, 15:00 UTC)
 crons.daily(
-    "post-tweet-morning",
+    "post-tweet-morning-1",
     { hourUTC: 14, minuteUTC: 0 },
     internal.generate.postPendingTweet
 );
-
-// 2. Afternoon Post (1 PM EST -> 18:00 UTC)
 crons.daily(
-    "post-tweet-afternoon",
-    { hourUTC: 18, minuteUTC: 0 },
+    "post-tweet-morning-2",
+    { hourUTC: 15, minuteUTC: 0 },
     internal.generate.postPendingTweet
 );
 
-// 3. Evening Post (5 PM EST -> 22:00 UTC)
+// Afternoon: 1 PM & 2 PM EST (18:00, 19:00 UTC)
 crons.daily(
-    "post-tweet-evening",
+    "post-tweet-afternoon-1",
+    { hourUTC: 18, minuteUTC: 0 },
+    internal.generate.postPendingTweet
+);
+crons.daily(
+    "post-tweet-afternoon-2",
+    { hourUTC: 19, minuteUTC: 0 },
+    internal.generate.postPendingTweet
+);
+
+// Evening: 5 PM & 6 PM EST (22:00, 23:00 UTC)
+crons.daily(
+    "post-tweet-evening-1",
     { hourUTC: 22, minuteUTC: 0 },
+    internal.generate.postPendingTweet
+);
+crons.daily(
+    "post-tweet-evening-2",
+    { hourUTC: 23, minuteUTC: 0 },
     internal.generate.postPendingTweet
 );
 

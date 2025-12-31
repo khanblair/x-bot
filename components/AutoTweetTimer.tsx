@@ -8,17 +8,19 @@ export function AutoTweetTimer() {
   const [postTime, setPostTime] = useState({ hours: 0, minutes: 0, seconds: 0 });
   const [draftTime, setDraftTime] = useState({ hours: 0, minutes: 0, seconds: 0 });
   const [nextPostLocal, setNextPostLocal] = useState<string>("");
+  const [nextDraftLocal, setNextDraftLocal] = useState<string>("");
+  const [nextDraftEST, setNextDraftEST] = useState<string>("");
   const [strategyLabel, setStrategyLabel] = useState<string>("");
   const [isExpanded, setIsExpanded] = useState(false);
 
   useEffect(() => {
     const calculateTime = () => {
       const now = new Date();
-      // Target post times in UTC (EST Schedule):
-      // 9 AM EST = 14:00 UTC
-      // 1 PM EST = 18:00 UTC
-      // 5 PM EST = 22:00 UTC
-      const scheduleHoursUTC = [14, 18, 22];
+      // Target post times in UTC (EST Schedule - 6x Daily):
+      // Morning: 9 AM, 10 AM EST -> 14, 15 UTC
+      // Afternoon: 1 PM, 2 PM EST -> 18, 19 UTC
+      // Evening: 5 PM, 6 PM EST -> 22, 23 UTC
+      const scheduleHoursUTC = [14, 15, 18, 19, 22, 23];
 
       // Find next scheduled post
       let nextPost = null;
@@ -44,9 +46,9 @@ export function AutoTweetTimer() {
 
       // Set strategy label based on UTC hour
       const utcHour = nextPost.getUTCHours();
-      if (utcHour === 14) setStrategyLabel("Target: US Workday Start (9 AM EST)");
-      else if (utcHour === 18) setStrategyLabel("Target: Global Sweet Spot (1 PM EST)");
-      else setStrategyLabel("Target: US End of Day (5 PM EST)");
+      if (utcHour === 14 || utcHour === 15) setStrategyLabel("Target: US Workday (Morning Block)");
+      else if (utcHour === 18 || utcHour === 19) setStrategyLabel("Target: Global Spot (Afternoon Block)");
+      else setStrategyLabel("Target: US End of Day (Evening Block)");
 
       const msUntilPost = nextPost.getTime() - now.getTime();
       const secondsUntilPost = Math.floor(msUntilPost / 1000);
@@ -79,6 +81,9 @@ export function AutoTweetTimer() {
         nextDraft.setUTCDate(now.getUTCDate() + 1);
         nextDraft.setUTCHours(draftScheduleUTC[0], 0, 0, 0);
       }
+
+      setNextDraftLocal(nextDraft.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+      setNextDraftEST(nextDraft.toLocaleTimeString('en-US', { timeZone: 'America/New_York', hour: '2-digit', minute: '2-digit', timeZoneName: 'short' }));
 
       const msUntilDraft = nextDraft.getTime() - now.getTime();
       const secondsUntilDraft = Math.max(0, Math.floor(msUntilDraft / 1000));
@@ -139,11 +144,24 @@ export function AutoTweetTimer() {
                   <FileText className="w-3 h-3 md:w-4 md:h-4 text-blue-500" />
                   <span className="text-xs md:text-sm font-medium">Next Draft Gen</span>
                 </div>
-                <div className="flex items-baseline justify-between">
-                  <div className="text-lg md:text-xl font-mono font-bold text-blue-600 dark:text-blue-400">
-                    {formatTime(draftTime.hours)}:{formatTime(draftTime.minutes)}:{formatTime(draftTime.seconds)}
+                <div className="flex flex-col">
+                  <div className="flex items-baseline justify-between mb-1">
+                    <div className="text-lg md:text-xl font-mono font-bold text-blue-600 dark:text-blue-400">
+                      {formatTime(draftTime.hours)}:{formatTime(draftTime.minutes)}:{formatTime(draftTime.seconds)}
+                    </div>
+                    <span className="text-[10px] md:text-xs text-muted">Daily Cycle</span>
                   </div>
-                  <span className="text-[10px] md:text-xs text-muted">Daily Cycle</span>
+
+                  {nextDraftLocal && (
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-[11px] font-medium text-blue-600/80 dark:text-blue-400/80">
+                        Target: {nextDraftEST}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground">
+                        Local: {nextDraftLocal}
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
             </GlassCard>
