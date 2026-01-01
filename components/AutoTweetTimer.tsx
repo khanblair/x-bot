@@ -16,41 +16,52 @@ export function AutoTweetTimer() {
   useEffect(() => {
     const calculateTime = () => {
       const now = new Date();
-      // Target post times in UTC (EST Schedule - 6x Daily):
-      // Morning: 9 AM, 10 AM EST -> 14, 15 UTC
-      // Afternoon: 1 PM, 2 PM EST -> 18, 19 UTC
-      // Evening: 5 PM, 6 PM EST -> 22, 23 UTC
-      const scheduleHoursUTC = [14, 15, 18, 19, 22, 23];
+      // Target post times in UTC (EST Schedule - 9x Daily):
+      // Morning: 9:00, 9:30, 10:00 EST -> 14:00, 14:30, 15:00 UTC
+      // Afternoon: 1:00, 1:30, 2:00 EST -> 18:00, 18:30, 19:00 UTC
+      // Evening: 5:00, 6:00, 6:30 EST -> 22:00, 23:00, 23:30 UTC
+      const scheduleSlotsUTC = [
+        { h: 14, m: 0, label: "Target: US Workday (Morning Poll)" },
+        { h: 14, m: 30, label: "Target: US Morning (Growth & Reach)" },
+        { h: 15, m: 0, label: "Target: US Workday (Morning Poll)" },
+        { h: 18, m: 0, label: "Target: Global Spot (Afternoon Hook)" },
+        { h: 18, m: 30, label: "Target: Global Spot (Growth & Reach)" },
+        { h: 19, m: 0, label: "Target: Global Spot (Afternoon Hook)" },
+        { h: 22, m: 0, label: "Target: US End of Day (Evening Value)" },
+        { h: 23, m: 0, label: "Target: US End of Day (Evening Value)" },
+        { h: 23, m: 30, label: "Target: US Evening (Growth & Reach)" }
+      ];
 
       // Find next scheduled post
-      let nextPost = null;
-      for (const h of scheduleHoursUTC) {
+      let nextPostDate = null;
+      let nextLabel = "";
+
+      for (const slot of scheduleSlotsUTC) {
         const target = new Date(now);
-        target.setUTCHours(h, 0, 0, 0);
+        target.setUTCHours(slot.h, slot.m, 0, 0);
 
         if (target.getTime() > now.getTime()) {
-          nextPost = target;
+          nextPostDate = target;
+          nextLabel = slot.label;
           break;
         }
       }
 
       // If no post left today, get first post of tomorrow
-      if (!nextPost) {
-        nextPost = new Date(now);
-        nextPost.setUTCDate(now.getUTCDate() + 1);
-        nextPost.setUTCHours(scheduleHoursUTC[0], 0, 0, 0);
+      if (!nextPostDate) {
+        nextPostDate = new Date(now);
+        nextPostDate.setUTCDate(now.getUTCDate() + 1);
+        nextPostDate.setUTCHours(scheduleSlotsUTC[0].h, scheduleSlotsUTC[0].m, 0, 0);
+        nextLabel = scheduleSlotsUTC[0].label;
       }
 
       // Update next post local time string
-      setNextPostLocal(nextPost.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+      setNextPostLocal(nextPostDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
 
-      // Set strategy label based on UTC hour
-      const utcHour = nextPost.getUTCHours();
-      if (utcHour === 14 || utcHour === 15) setStrategyLabel("Target: US Workday (Morning Block)");
-      else if (utcHour === 18 || utcHour === 19) setStrategyLabel("Target: Global Spot (Afternoon Block)");
-      else setStrategyLabel("Target: US End of Day (Evening Block)");
+      // Set strategy label
+      setStrategyLabel(nextLabel);
 
-      const msUntilPost = nextPost.getTime() - now.getTime();
+      const msUntilPost = nextPostDate.getTime() - now.getTime();
       const secondsUntilPost = Math.floor(msUntilPost / 1000);
 
       setPostTime({

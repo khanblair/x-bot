@@ -23,51 +23,75 @@ crons.daily(
 // Afternoon: 1 PM EST -> 18:00 UTC
 // Evening: 5 PM EST -> 22:00 UTC
 
-// --- Draft Generation: Every 2 Hours (Odd Hours) ---
-// Runs at 1, 3, 5, ... 13, 15, ... 21, 23 UTC.
-// Avoids collision with Posting times (14, 18, 22 UTC).
+// --- Draft Generation: Hourly ---
+// Runs at minute 0 of every hour to keep buffer full with variety
 crons.cron(
-    "generate-draft-regular",
-    "0 1-23/2 * * *",
+    "generate-draft-hourly",
+    "0 * * * *",
     internal.generate.generateDraft,
     {}
 );
 
-// --- Posting Schedule: 6 Posts Per Day (Double Header Strategy) ---
-// Morning: 9 AM & 10 AM EST (14:00, 15:00 UTC)
+// --- Posting Schedule: 9 Posts Per Day ---
+
+// MORNING BLOCK (EST 9:00 - 11:00)
 crons.daily(
-    "post-tweet-morning-1",
-    { hourUTC: 14, minuteUTC: 0 },
-    internal.generate.postPendingTweet
+    "post-morning-1",
+    { hourUTC: 14, minuteUTC: 0 }, // 9:00 AM EST (Poll)
+    internal.generate.postPendingTweet,
+    { type: "morning" }
 );
 crons.daily(
-    "post-tweet-morning-2",
-    { hourUTC: 15, minuteUTC: 0 },
-    internal.generate.postPendingTweet
+    "post-morning-growth",
+    { hourUTC: 14, minuteUTC: 30 }, // 9:30 AM EST (Growth)
+    internal.generate.postPendingTweet,
+    { type: "growth" }
+);
+crons.daily(
+    "post-morning-2",
+    { hourUTC: 15, minuteUTC: 0 }, // 10:00 AM EST (Poll)
+    internal.generate.postPendingTweet,
+    { type: "morning" }
 );
 
-// Afternoon: 1 PM & 2 PM EST (18:00, 19:00 UTC)
+// AFTERNOON BLOCK (EST 13:00 - 15:00)
 crons.daily(
-    "post-tweet-afternoon-1",
-    { hourUTC: 18, minuteUTC: 0 },
-    internal.generate.postPendingTweet
+    "post-afternoon-1",
+    { hourUTC: 18, minuteUTC: 0 }, // 1:00 PM EST (Hook)
+    internal.generate.postPendingTweet,
+    { type: "afternoon" }
 );
 crons.daily(
-    "post-tweet-afternoon-2",
-    { hourUTC: 19, minuteUTC: 0 },
-    internal.generate.postPendingTweet
+    "post-afternoon-growth",
+    { hourUTC: 18, minuteUTC: 30 }, // 1:30 PM EST (Growth)
+    internal.generate.postPendingTweet,
+    { type: "growth" }
+);
+crons.daily(
+    "post-afternoon-2",
+    { hourUTC: 19, minuteUTC: 0 }, // 2:00 PM EST (Hook)
+    internal.generate.postPendingTweet,
+    { type: "afternoon" }
 );
 
-// Evening: 5 PM & 6 PM EST (22:00, 23:00 UTC)
+// EVENING BLOCK (EST 17:00 - 19:00)
 crons.daily(
-    "post-tweet-evening-1",
-    { hourUTC: 22, minuteUTC: 0 },
-    internal.generate.postPendingTweet
+    "post-evening-1",
+    { hourUTC: 22, minuteUTC: 0 }, // 5:00 PM EST (Value)
+    internal.generate.postPendingTweet,
+    { type: "evening" }
 );
 crons.daily(
-    "post-tweet-evening-2",
-    { hourUTC: 23, minuteUTC: 0 },
-    internal.generate.postPendingTweet
+    "post-evening-2",
+    { hourUTC: 23, minuteUTC: 0 }, // 6:00 PM EST (Value)
+    internal.generate.postPendingTweet,
+    { type: "evening" }
+);
+crons.daily(
+    "post-evening-growth",
+    { hourUTC: 23, minuteUTC: 30 }, // 6:30 PM EST (Growth)
+    internal.generate.postPendingTweet,
+    { type: "growth" }
 );
 
 export default crons;

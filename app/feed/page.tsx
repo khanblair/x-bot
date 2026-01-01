@@ -7,12 +7,53 @@ import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { GlassCard } from '@/components/GlassCard';
 import { RateLimitIndicator } from '@/components/RateLimitIndicator';
 import { PageLayout } from '@/components/PageLayout';
-import { Twitter, Search as SearchIcon, TrendingUp, Filter, X, CheckCircle2, XCircle, Clock, Heart, MessageCircle, Repeat2, Sparkles } from 'lucide-react';
+import { Twitter, Search as SearchIcon, TrendingUp, Filter, X, CheckCircle2, XCircle, Clock, Heart, MessageCircle, Repeat2, Sparkles, Trash2, Edit2, AlertTriangle, Save } from 'lucide-react';
+import { useMutation } from 'convex/react';
 
 export default function FeedPage() {
   const [searchFilter, setSearchFilter] = useState('');
   const [sortBy, setSortBy] = useState('latest');
   const [statusFilter, setStatusFilter] = useState('all');
+
+  // State for Modals
+  const [editingTweet, setEditingTweet] = useState<any>(null);
+  const [deletingTweetId, setDeletingTweetId] = useState<string | null>(null);
+  const [editText, setEditText] = useState('');
+
+  // Mutations
+  const updateTweetText = useMutation(api.tweets.updateTweetText);
+  const deleteTweet = useMutation(api.tweets.deleteTweet);
+
+  const handleEditClick = (tweet: any) => {
+    setEditingTweet(tweet);
+    setEditText(tweet.text);
+  };
+
+  const handleUpdateTweet = async () => {
+    if (!editingTweet || !editText.trim()) return;
+
+    try {
+      await updateTweetText({ id: editingTweet._id, text: editText });
+      setEditingTweet(null);
+      setEditText('');
+    } catch (error) {
+      console.error("Failed to update tweet:", error);
+    }
+  };
+
+  const handleDeleteClick = (id: string) => {
+    setDeletingTweetId(id);
+  };
+
+  const CONFIRM_DELETE_TWEET = async () => {
+    if (!deletingTweetId) return;
+    try {
+      await deleteTweet({ id: deletingTweetId as any }); // Cast as any if id type mismatch from raw data
+      setDeletingTweetId(null);
+    } catch (error) {
+      console.error("Failed to delete tweet:", error);
+    }
+  };
 
   // Fetch all posts from Convex
   const allPosts = useConvexQuery(api.tweets.getTweets, { limit: 100 });
@@ -240,6 +281,26 @@ export default function FeedPage() {
                             {tweet.replies || 0}
                           </span>
                         </div>
+
+                        {/* Actions for Pending/Drafts only, or allow deleting failed too */}
+                        {(tweet.status === 'pending' || tweet.status === 'failed') && (
+                          <div className="flex justify-end gap-2 mt-2 pt-3 border-t border-white/5">
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleEditClick(tweet); }}
+                              className="p-2 rounded-full hover:bg-blue-500/10 text-blue-400 transition-colors"
+                              title="Edit Draft"
+                            >
+                              <Edit2 className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleDeleteClick(tweet._id); }}
+                              className="p-2 rounded-full hover:bg-red-500/10 text-red-500 transition-colors"
+                              title="Delete Draft"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </GlassCard>
@@ -314,6 +375,83 @@ export default function FeedPage() {
           </div>
         </div>
       </main>
+    {/* Edit Modal */}
+    {editingTweet && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+            <GlassCard className="w-full max-w-lg p-6 animate-in fade-in zoom-in duration-200">
+                <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-xl font-bold flex items-center gap-2">
+                        <Edit2 className="w-5 h-5 text-blue-400" />
+                        Edit Tweet
+                    </h3>
+                    <button onClick={() => setEditingTweet(null)} className="text-muted hover:text-white">
+                        <X className="w-6 h-6" />
+                    </button>
+                </div>
+                
+                <textarea
+                    value={editText}
+                    onChange={(e) => setEditText(e.target.value)}
+                    className="w-full h-40 bg-black/20 text-white p-4 rounded-xl border border-white/10 focus:ring-2 focus:ring-twitter-blue outline-none resize-none mb-4"
+                    placeholder="Edit your tweet content..."
+                />
+                
+                <div className="flex justify-between items-center text-sm text-muted mb-4">
+                    <span>{editText.length} characters</span>
+                    {editText.length > 280 && <span className="text-red-500">Over limit!</span>}
+                </div>
+
+                <div className="flex justify-end gap-3">
+                    <button 
+                        onClick={() => setEditingTweet(null)}
+                        className="btn-secondary px-5"
+                    >
+                        Cancel
+                    </button>
+                    <button 
+                        onClick={handleUpdateTweet}
+                        disabled={editText.length > 280 || !editText.trim()}
+                        className="btn-primary flex items-center gap-2"
+                    >
+                        <Save className="w-4 h-4" />
+                        Save Changes
+                    </button>
+                </div>
+            </GlassCard>
+        </div>
+    )}
+
+    {/* Delete Confirmation Modal */}
+    {deletingTweetId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+            <GlassCard className="w-full max-w-sm p-6 animate-in fade-in zoom-in duration-200 border-red-500/30">
+                <div className="text-center">
+                    <div className="w-12 h-12 rounded-full bg-red-500/20 flex items-center justify-center mx-auto mb-4">
+                        <AlertTriangle className="w-6 h-6 text-red-500" />
+                    </div>
+                    <h3 className="text-xl font-bold mb-2">Delete Draft?</h3>
+                    <p className="text-muted mb-6">
+                        Are you sure you want to delete this draft? This action cannot be undone.
+                    </p>
+                    
+                    <div className="flex justify-center gap-3">
+                        <button 
+                            onClick={() => setDeletingTweetId(null)}
+                            className="btn-secondary w-full"
+                        >
+                            Cancel
+                        </button>
+                        <button 
+                            onClick={CONFIRM_DELETE_TWEET}
+                            className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-full transition-colors w-full font-medium"
+                        >
+                            Delete
+                        </button>
+                    </div>
+                </div>
+            </GlassCard>
+        </div>
+    )}
     </PageLayout>
   );
 }

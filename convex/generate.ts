@@ -100,6 +100,7 @@ export const generateDraft = internalAction({
         5. **Trends & Variety**: Tie into current events, memes, or trending topics for timeliness. Vary phrasing to keep content fresh and diverse.
         6. **Engagement**: End with a CTA like a question or poll to encourage replies/comments.
         7. **Threads**: Suggest threading (🧵) for deeper value where it fits, especially for educational content.
+        8. **NO MARKDOWN**: Do NOT use bold (**text**), italics (*text*), or other markdown formatting. Twitter acts as plain text. Return ONLY the raw text.
         `;
 
         if (type === "morning") {
@@ -126,6 +127,19 @@ export const generateDraft = internalAction({
             ${baseRules}
             
             Example: "Most think scaling SaaS takes years. I did it in 3 months with this AI hack... 🧵 #SaaS #AI"`;
+        } else if (type === "growth") {
+            // Growth: Follow for Follow / Networking
+            prompt = `Write a viral **GROWTH & NETWORKING** tweet to gain followers for a ${topic.niche} account.
+            
+            Specific Rules:
+            1. **Style**: Community building, "let's grow together", supportive and energetic.
+            2. **Content**: Mention "Small accounts", "Follow for Follow", "I follow back". 
+            3. **Call To Action**: "Follow me", "Retweet this", "Comment your niche".
+            4. **Constraint**: Must use phrases like "I follow back under 1 minute", "Lets grow together", "Follow all who retweet".
+            
+            ${baseRules}
+            
+            Example: "Small accounts, let's grow together! 🚀 I follow back everyone who interacts with this post under 1 minute. Drop your niche below! 👇 #GrowTogether #FollowBack"`;
         } else {
             // Evening: Educational / Hint
             prompt = `Write a viral, high-engagement **EDUCATIONAL-HINT** tweet about ${topic.subcategory} in the ${topic.niche} niche.
@@ -189,6 +203,14 @@ export const generateDraft = internalAction({
             }
         }
 
+        // Post-processing: Clean up any Markdown artifacts that slipped through
+        tweetContent = tweetContent
+            .replace(/\*\*(.*?)\*\*/g, "$1") // Remove bold **
+            .replace(/\*(.*?)\*/g, "$1")     // Remove italic *
+            .replace(/__(.*?)__/g, "$1")     // Remove bold __
+            .replace(/^["']|["']$/g, "")     // Remove surrounding quotes
+            .trim();
+
         // 5. Save to DB (Status: Pending)
         await ctx.runMutation(api.tweets.addTweet, {
             text: tweetContent,
@@ -199,9 +221,9 @@ export const generateDraft = internalAction({
             niche: topic.niche,
             subcategory: topic.subcategory,
             aiPrompt: prompt,
+            type: type,
         });
 
-        // 6. Notify User (Draft ready)
         // 6. Notify User (Draft ready)
         // Context-Aware Notification
         let notifTitle = "New Draft ready! 📝";
@@ -216,6 +238,9 @@ export const generateDraft = internalAction({
         } else if (type === "evening") {
             notifTitle = "Evening Value Draft Ready! 📚";
             notifBody = `Review your educational post about ${topic.subcategory}.`;
+        } else if (type === "growth") {
+            notifTitle = "Growth Draft Ready! 🚀";
+            notifBody = "Time to grow! Review your networking tweet.";
         }
 
         await ctx.runMutation(api.pushNotifications.createNotification, {
@@ -248,10 +273,10 @@ export const generateDraft = internalAction({
  * - Updates status to "posted"
  */
 export const postPendingTweet = internalAction({
-    args: {},
-    handler: async (ctx) => {
+    args: { type: v.optional(v.string()) },
+    handler: async (ctx, args) => {
         // 1. Get Oldest Pending Tweet
-        const tweetToPost = await ctx.runQuery(api.tweets.getOldestPendingTweet);
+        const tweetToPost = await ctx.runQuery(api.tweets.getOldestPendingTweet, { type: args.type });
 
         if (!tweetToPost) {
             console.log("No pending tweets found. triggering immediate fallback generation...");
@@ -259,9 +284,13 @@ export const postPendingTweet = internalAction({
             // Determine type based on current hour to maintain strategy consistency
             // (Even though this is fallback, we try to match the slot)
             const hour = new Date().getUTCHours();
-            let type = "morning";
-            if (hour >= 17) type = "evening"; // > 5 PM UTC (approx) - tough with EST. 
-            else if (hour >= 13) type = "afternoon"; // > 1 PM UTC
+            let type = args.type; // Use requested type first
+
+            if (!type) {
+                if (hour >= 17) type = "evening"; // > 5 PM UTC (approx) - tough with EST. 
+                else if (hour >= 13) type = "afternoon"; // > 1 PM UTC
+                else type = "morning";
+            }
 
             // Trigger generation
             await ctx.runAction(internal.generate.generateDraft, { type });
@@ -269,7 +298,7 @@ export const postPendingTweet = internalAction({
             // Verify and fetch the newly created tweet
             // (Give DB a moment? No, mutations are consistent in Convex usually, but Action->Mutation might have delay? 
             // Query should see it if mutation finished. `generateDraft` awaits the mutation. So we are good.)
-            const fallbackTweet = await ctx.runQuery(api.tweets.getOldestPendingTweet);
+            const fallbackTweet = await ctx.runQuery(api.tweets.getOldestPendingTweet, { type: args.type });
 
             if (!fallbackTweet) {
                 console.error("Fallback generation failed or did not save in time.");
@@ -287,7 +316,7 @@ export const postPendingTweet = internalAction({
             // await ctx.runAction(internal.generate.postPendingTweet);
             // return;
             // This is cleanest.
-            await ctx.runAction(internal.generate.postPendingTweet);
+            await ctx.runAction(internal.generate.postPendingTweet, { type: args.type });
             return;
         }
 
@@ -323,9 +352,27 @@ export const postPendingTweet = internalAction({
             });
 
             // 4. Notify User
+            // Context-Aware Success Notification
+            let successTitle = "🚀 Auto-tweet Posted!";
+            let successBody = `Your queued tweet was sent to X.`;
+
+            if (tweetToPost.type === "morning") {
+                successTitle = "📊 Morning Poll Posted! ☀️";
+                successBody = "Your daily poll is live. Check for votes!";
+            } else if (tweetToPost.type === "afternoon") {
+                successTitle = "🎣 Post Posted! 🏹";
+                successBody = "Your afternoon hook is live on X.";
+            } else if (tweetToPost.type === "evening") {
+                successTitle = "📚 Value Tweet Posted! 🌙";
+                successBody = "Your educational thread/post is live.";
+            } else if (tweetToPost.type === "growth") {
+                successTitle = "🚀 Growth Tweet Posted! 📈";
+                successBody = "Networking post is live! Engage with replies now.";
+            }
+
             await ctx.runMutation(api.pushNotifications.createNotification, {
-                title: "🚀 Auto-tweet Posted!",
-                body: `Your queued tweet was sent to X: "${tweetToPost.text.substring(0, 40)}..."`,
+                title: successTitle,
+                body: `${successBody} ("${tweetToPost.text.substring(0, 30)}...")`,
                 type: "success",
                 data: { url: "/feed" }
             });
@@ -333,8 +380,8 @@ export const postPendingTweet = internalAction({
             // Push Notification
             try {
                 await ctx.runAction(api.pushNotifications.sendPushNotification, {
-                    title: "Tweet Posted! 🚀",
-                    body: `Sent to X: ${tweetToPost.text.substring(0, 40)}...`,
+                    title: successTitle,
+                    body: `${successBody} ("${tweetToPost.text.substring(0, 30)}...")`,
                     type: "success",
                     data: { url: "/feed" },
                     skipDbRecord: true,

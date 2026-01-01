@@ -50,6 +50,7 @@ export default defineSchema({
     subcategory: v.optional(v.string()), // Selected subcategory
     aiGuidance: v.optional(v.string()), // User-provided guidance
     aiPrompt: v.optional(v.string()), // Full prompt sent to AI
+    type: v.optional(v.string()), // Type of tweet (morning, afternoon, evening, growth)
   })
     .index("by_status", ["status"])
     .index("by_created", ["createdAt"])

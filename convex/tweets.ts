@@ -33,6 +33,7 @@ export const addTweet = mutation({
     subcategory: v.optional(v.string()),
     aiGuidance: v.optional(v.string()),
     aiPrompt: v.optional(v.string()),
+    type: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const now = Date.now();
@@ -64,6 +65,19 @@ export const updateTweetStatus = mutation({
     await ctx.db.patch(id, {
       ...updates,
       postedAt: args.status === "posted" ? Date.now() : undefined,
+    });
+  },
+});
+
+// Update tweet text
+export const updateTweetText = mutation({
+  args: {
+    id: v.id("tweets"),
+    text: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.id, {
+      text: args.text,
     });
   },
 });
@@ -116,12 +130,19 @@ export const getTweetsByStatus = query({
 
 // Get oldest pending tweet (FIFO queue for auto-posting)
 export const getOldestPendingTweet = query({
-  handler: async (ctx) => {
-    return await ctx.db
+  args: {
+    type: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    let q = ctx.db
       .query("tweets")
-      .withIndex("by_status", (q) => q.eq("status", "pending"))
-      .order("asc") // Oldest first
-      .first();
+      .withIndex("by_status", (q) => q.eq("status", "pending"));
+
+    if (args.type) {
+      q = q.filter((q) => q.eq(q.field("type"), args.type));
+    }
+
+    return await q.order("asc").first();
   },
 });
 
