@@ -56,6 +56,17 @@ export function TweetCard({ tweet }: TweetCardProps) {
             </span>
             <span className="text-muted text-sm">·</span>
             <span className="text-muted text-sm">{formatDate(tweet.created_at)}</span>
+            {tweet.type && (
+              <>
+                <span className="text-muted text-sm">·</span>
+                <span className="text-xs px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-500 font-medium capitalize">
+                  {tweet.type === 'morning' ? 'Poll' :
+                    tweet.type === 'afternoon' ? 'Hook' :
+                      tweet.type === 'evening' ? 'Value' :
+                        tweet.type === 'growth' ? 'Growth' : tweet.type}
+                </span>
+              </>
+            )}
           </div>
         </div>
       </div>

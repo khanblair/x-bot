@@ -76,16 +76,21 @@ export const generateDraft = internalAction({
 
         // If type not provided (running from regular cron), infer it based on time of day
         // to keep the buffer balanced for the upcoming slots.
+        // If type not provided (running from regular cron), use the defined sequence
+        // Sequence matches posting Order: 
+        // Morning: Growth, Poll, Growth
+        // Afternoon: Growth, Hook, Growth
+        // Evening: Growth, Value, Growth
+        // Mapping: poll->morning, hook->afternoon, value->evening
         if (!type) {
+            const sequence = [
+                "growth", "morning", "growth",
+                "growth", "afternoon", "growth",
+                "growth", "evening", "growth"
+            ];
             const currentHour = new Date().getUTCHours();
-            // Balanced Distribution for 6x Posting:
-            // Morning Drafts: 00:00 - 07:59 UTC (4 slots: 1, 3, 5, 7)
-            // Afternoon Drafts: 08:00 - 15:59 UTC (4 slots: 9, 11, 13, 15)
-            // Evening Drafts: 16:00 - 23:59 UTC (4 slots: 17, 19, 21, 23)
-
-            if (currentHour < 8) type = "morning";
-            else if (currentHour < 16) type = "afternoon";
-            else type = "evening";
+            // Use modulo to cycle through the sequence hourly
+            type = sequence[currentHour % sequence.length];
         }
 
         let prompt = "";
@@ -230,13 +235,13 @@ export const generateDraft = internalAction({
         let notifBody = `Draft about ${topic.subcategory} generated.`;
 
         if (type === "morning") {
-            notifTitle = "Morning Poll Draft Ready! ☀️";
+            notifTitle = "Poll Draft Ready! 📊";
             notifBody = `Review your poll about ${topic.subcategory}.`;
         } else if (type === "afternoon") {
-            notifTitle = "Afternoon Hook Draft Ready! 🎣";
+            notifTitle = "Hook Draft Ready! 🪝";
             notifBody = `Review your hook about ${topic.subcategory}.`;
         } else if (type === "evening") {
-            notifTitle = "Evening Value Draft Ready! 📚";
+            notifTitle = "Value Tweet Draft Ready! 💎";
             notifBody = `Review your educational post about ${topic.subcategory}.`;
         } else if (type === "growth") {
             notifTitle = "Growth Draft Ready! 🚀";
@@ -357,13 +362,13 @@ export const postPendingTweet = internalAction({
             let successBody = `Your queued tweet was sent to X.`;
 
             if (tweetToPost.type === "morning") {
-                successTitle = "📊 Morning Poll Posted! ☀️";
-                successBody = "Your daily poll is live. Check for votes!";
+                successTitle = "📊 Poll Posted! 🗳️";
+                successBody = "Your poll is live. Check for votes!";
             } else if (tweetToPost.type === "afternoon") {
-                successTitle = "🎣 Post Posted! 🏹";
-                successBody = "Your afternoon hook is live on X.";
+                successTitle = "🪝 Hook Posted! 🏹";
+                successBody = "Your hook is live on X.";
             } else if (tweetToPost.type === "evening") {
-                successTitle = "📚 Value Tweet Posted! 🌙";
+                successTitle = "💎 Value Tweet Posted! 💡";
                 successBody = "Your educational thread/post is live.";
             } else if (tweetToPost.type === "growth") {
                 successTitle = "🚀 Growth Tweet Posted! 📈";

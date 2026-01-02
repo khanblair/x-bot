@@ -37,58 +37,58 @@ crons.cron(
 // MORNING BLOCK (EST 9:00 - 11:00)
 crons.daily(
     "post-morning-1",
-    { hourUTC: 14, minuteUTC: 0 }, // 9:00 AM EST (Poll)
-    internal.generate.postPendingTweet,
-    { type: "morning" }
-);
-crons.daily(
-    "post-morning-growth",
-    { hourUTC: 14, minuteUTC: 30 }, // 9:30 AM EST (Growth)
+    { hourUTC: 14, minuteUTC: 0 }, // 9:00 AM EST (Growth)
     internal.generate.postPendingTweet,
     { type: "growth" }
 );
 crons.daily(
-    "post-morning-2",
-    { hourUTC: 15, minuteUTC: 0 }, // 10:00 AM EST (Poll)
+    "post-morning-poll",
+    { hourUTC: 14, minuteUTC: 30 }, // 9:30 AM EST (Poll)
     internal.generate.postPendingTweet,
     { type: "morning" }
+);
+crons.daily(
+    "post-morning-2",
+    { hourUTC: 15, minuteUTC: 0 }, // 10:00 AM EST (Growth)
+    internal.generate.postPendingTweet,
+    { type: "growth" }
 );
 
 // AFTERNOON BLOCK (EST 13:00 - 15:00)
 crons.daily(
     "post-afternoon-1",
-    { hourUTC: 18, minuteUTC: 0 }, // 1:00 PM EST (Hook)
-    internal.generate.postPendingTweet,
-    { type: "afternoon" }
-);
-crons.daily(
-    "post-afternoon-growth",
-    { hourUTC: 18, minuteUTC: 30 }, // 1:30 PM EST (Growth)
+    { hourUTC: 18, minuteUTC: 0 }, // 1:00 PM EST (Growth)
     internal.generate.postPendingTweet,
     { type: "growth" }
 );
 crons.daily(
-    "post-afternoon-2",
-    { hourUTC: 19, minuteUTC: 0 }, // 2:00 PM EST (Hook)
+    "post-afternoon-hook",
+    { hourUTC: 18, minuteUTC: 30 }, // 1:30 PM EST (Hook)
     internal.generate.postPendingTweet,
     { type: "afternoon" }
+);
+crons.daily(
+    "post-afternoon-2",
+    { hourUTC: 19, minuteUTC: 0 }, // 2:00 PM EST (Growth)
+    internal.generate.postPendingTweet,
+    { type: "growth" }
 );
 
 // EVENING BLOCK (EST 17:00 - 19:00)
 crons.daily(
     "post-evening-1",
-    { hourUTC: 22, minuteUTC: 0 }, // 5:00 PM EST (Value)
+    { hourUTC: 22, minuteUTC: 0 }, // 5:00 PM EST (Growth)
     internal.generate.postPendingTweet,
-    { type: "evening" }
+    { type: "growth" }
 );
 crons.daily(
-    "post-evening-2",
+    "post-evening-value",
     { hourUTC: 23, minuteUTC: 0 }, // 6:00 PM EST (Value)
     internal.generate.postPendingTweet,
     { type: "evening" }
 );
 crons.daily(
-    "post-evening-growth",
+    "post-evening-2",
     { hourUTC: 23, minuteUTC: 30 }, // 6:30 PM EST (Growth)
     internal.generate.postPendingTweet,
     { type: "growth" }

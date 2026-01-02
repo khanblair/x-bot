@@ -15,6 +15,7 @@ export interface Tweet {
     username: string;
     profile_image_url?: string;
   };
+  type?: string;
 }
 
 export interface TweetResponse {
