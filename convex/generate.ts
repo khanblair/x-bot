@@ -22,7 +22,8 @@ const PREDEFINED_TOPICS = Object.entries(HASHTAG_DATABASE).flatMap(([niche, subc
 export const generateDraft = internalAction({
     args: { type: v.optional(v.string()) },
     handler: async (ctx, args) => {
-        const API_URL = process.env.APIFREELLM_FREE_URL || "https://apifreellm.com/api/chat";
+        const API_URL = process.env.APIFREELLM_FREE_URL || "https://apifreellm.com/api/v1/chat";
+        const API_KEY = process.env.APIFREELLM_FREE_API;
         const ENDPOINT_ID = "apifreellm-generate";
 
         // 1. Daily Limit Check (Max 15 per day)
@@ -175,6 +176,7 @@ export const generateDraft = internalAction({
                     headers: {
                         "Content-Type": "application/json",
                         "Accept": "application/json",
+                        "Authorization": `Bearer ${API_KEY}`,
                         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
                     },
                     body: JSON.stringify({ message: prompt }),
@@ -186,7 +188,10 @@ export const generateDraft = internalAction({
                     const errorText = await response.text();
                     console.error(`Attempt ${attempt} failed: APIFreeLLM status ${response.status}: ${errorText.substring(0, 200)}`);
                     if (attempt === maxAttempts) return; // Give up after max attempts
-                    await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2s before retry
+
+                    // New rate limit is 5 seconds
+                    const retryDelay = response.status === 429 ? 5500 : 2000;
+                    await new Promise(resolve => setTimeout(resolve, retryDelay));
                     continue;
                 }
 

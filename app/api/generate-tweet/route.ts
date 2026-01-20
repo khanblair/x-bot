@@ -26,7 +26,8 @@ export async function POST(request: Request) {
         let promptUsed = '';
 
         // APIFreeLLM (Default/Only option)
-        const API_URL = process.env.APIFREELLM_FREE_URL || "https://apifreellm.com/api/chat";
+        const API_URL = process.env.APIFREELLM_FREE_URL || "https://apifreellm.com/api/v1/chat";
+        const API_KEY = process.env.APIFREELLM_FREE_API;
 
         if (!API_URL) {
             console.error("APIFREELLM_FREE_URL environment variable not set");
@@ -42,6 +43,7 @@ export async function POST(request: Request) {
                 headers: {
                     "Content-Type": "application/json",
                     "Accept": "application/json",
+                    "Authorization": `Bearer ${API_KEY}`,
                     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
                 },
                 body: JSON.stringify({
