@@ -26,6 +26,11 @@ export const generateDraft = internalAction({
         const API_KEY = process.env.APIFREELLM_FREE_API;
         const ENDPOINT_ID = "apifreellm-generate";
 
+        if (!API_KEY) {
+            console.error("APIFREELLM_FREE_API environment variable is missing in Convex. Skipping draft generation.");
+            return;
+        }
+
         // 1. Daily Limit Check (Max 15 per day)
         // We count ALL tweets created today (pending or posted) to avoid spamming DB
         const recentTweets = await ctx.runQuery(api.tweets.getRecentTweets, { limit: 50 });
