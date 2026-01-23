@@ -37,7 +37,7 @@ export function PageLayout({
       {showComposeFAB && (
         <button
           onClick={() => setShowCompose(!showCompose)}
-          className="fixed bottom-6 right-6 md:bottom-8 md:right-8 z-50 w-14 h-14 md:w-16 md:h-16 rounded-full bg-twitter-blue hover:bg-twitter-blue/90 text-white shadow-2xl hover:scale-110 transition-all duration-200 flex items-center justify-center group"
+          className="fixed bottom-6 right-6 md:bottom-8 md:right-8 z-40 w-14 h-14 md:w-16 md:h-16 rounded-full bg-twitter-blue hover:bg-twitter-blue/90 text-white shadow-2xl hover:scale-110 transition-all duration-200 flex items-center justify-center group"
           aria-label={showCompose ? "Close compose" : "Compose Tweet"}
         >
           {showCompose ? (
@@ -54,7 +54,7 @@ export function PageLayout({
       {/* Compose Modal */}
       {showCompose && (
         <div
-          className="fixed inset-0 z-40 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm transition-opacity duration-200"
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm transition-opacity duration-200"
           onClick={(e) => {
             if (e.target === e.currentTarget) setShowCompose(false);
           }}

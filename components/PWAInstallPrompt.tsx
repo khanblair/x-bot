@@ -89,7 +89,7 @@ export function PWAInstallPrompt() {
     }
 
     return (
-        <div className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-4 sm:max-w-md z-50 animate-slide-up">
+        <div className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-4 sm:max-w-md z-[100] animate-slide-up">
             <GlassCard className="p-4 sm:p-5 border-2 border-twitter-blue/30 shadow-2xl">
                 <div className="flex items-start gap-3 sm:gap-4">
                     {/* Icon */}
